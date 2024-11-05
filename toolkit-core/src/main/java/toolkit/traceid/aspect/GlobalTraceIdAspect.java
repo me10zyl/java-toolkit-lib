@@ -1,19 +1,14 @@
-package toolkit.traceid;
+package toolkit.traceid.aspect;
 
 import org.aopalliance.aop.Advice;
 import org.aopalliance.intercept.MethodInterceptor;
-import org.aopalliance.intercept.MethodInvocation;
-import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
-import org.aspectj.lang.annotation.Before;
 import org.slf4j.MDC;
-import org.springframework.aop.ClassFilter;
 import org.springframework.aop.Pointcut;
 import org.springframework.aop.support.AbstractPointcutAdvisor;
-import org.springframework.aop.support.DynamicMethodMatcherPointcut;
 import org.springframework.stereotype.Component;
+import toolkit.traceid.PrefixMatchJoinPoint;
 
-import java.lang.reflect.Method;
 import java.util.UUID;
 
 
@@ -41,18 +36,7 @@ public class GlobalTraceIdAspect extends AbstractPointcutAdvisor {
 
     @Override
     public Pointcut getPointcut() {
-        return new DynamicMethodMatcherPointcut() {
-
-            @Override
-            public ClassFilter getClassFilter() {
-                return aClass -> aClass.getName().startsWith(GlobalTraceIdAspect.this.aopPrefix);
-            }
-
-            @Override
-            public boolean matches(Method method, Class<?> aClass, Object... objects) {
-                return true;
-            }
-        };
+         return new PrefixMatchJoinPoint(aopPrefix);
     }
 
     @Override

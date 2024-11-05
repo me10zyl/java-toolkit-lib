@@ -1,4 +1,4 @@
-package toolkit.traceid;
+package toolkit.traceid.aspect;
 
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.JSONSerializer;
@@ -7,20 +7,19 @@ import lombok.Setter;
 import org.aopalliance.aop.Advice;
 import org.aopalliance.intercept.MethodInterceptor;
 import org.aopalliance.intercept.MethodInvocation;
-import org.aspectj.lang.reflect.MethodSignature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import org.springframework.aop.ClassFilter;
 import org.springframework.aop.Pointcut;
 import org.springframework.aop.support.AbstractPointcutAdvisor;
-import org.springframework.aop.support.DynamicMethodMatcherPointcut;
 import org.springframework.util.Assert;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import toolkit.traceid.Constants;
+import toolkit.traceid.PrefixMatchJoinPoint;
+import toolkit.traceid.SerializeExclude;
 
 import javax.servlet.http.HttpServletRequest;
-import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
@@ -46,7 +45,7 @@ public class HttpRequestAspect extends AbstractPointcutAdvisor {
     @Setter
     private String[] excludeUrls = new String[]{};
     @Setter
-    private  DubboSerializeExclude[] httpSerializeExcludes = new DubboSerializeExclude[]{
+    private  SerializeExclude[] httpSerializeExcludes = new SerializeExclude[]{
     };
 
 
@@ -114,23 +113,7 @@ public class HttpRequestAspect extends AbstractPointcutAdvisor {
 
     @Override
     public Pointcut getPointcut() {
-        return new DynamicMethodMatcherPointcut() {
-
-            @Override
-            public ClassFilter getClassFilter() {
-                return new ClassFilter() {
-                    @Override
-                    public boolean matches(Class<?> aClass) {
-                        return aClass.getName().startsWith(aopPrefix);
-                    }
-                };
-            }
-
-            @Override
-            public boolean matches(Method method, Class<?> aClass, Object... objects) {
-                return true;
-            }
-        };
+        return new PrefixMatchJoinPoint(aopPrefix);
     }
 
     @Override
