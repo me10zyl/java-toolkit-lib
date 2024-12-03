@@ -35,7 +35,7 @@ public class DumpUtil {
                     System.exit(0); // 触发一次后退出监控
                 }
             }
-        }, 0, 10000); // 每 10 秒检查一次
+        }, 5 * 60 * 1000, 10000); // 每 10 秒检查一次
     }
 
     private static void generateHeapDump(String filePath) throws Exception {
