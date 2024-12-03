@@ -62,4 +62,17 @@
         </dependency>
     </dependencies>
 
+    <distributionManagement>
+        <repository>
+            <id>maven-releases</id>
+            <name>relase</name>
+            <url>${deployReleaseRepository}</url>
+        </repository>
+        <snapshotRepository>
+            <id>maven-releases</id>
+            <name>public</name>
+            <url>${deploySnapshotRepository}</url>
+        </snapshotRepository>
+    </distributionManagement>
+
 </project>
