@@ -6,12 +6,14 @@ import lombok.extern.slf4j.Slf4j;
 import java.lang.management.ManagementFactory;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 public class DumpUtil {
 
-    public static void startWatchOOM(){
+    public static void startWatchOOM() {
         Timer timer = new Timer(true);
+        AtomicInteger count = new AtomicInteger(0);
         timer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
@@ -19,20 +21,24 @@ public class DumpUtil {
                 long usedMemory = maxMemory - Runtime.getRuntime().freeMemory();
                 double usagePercentage = (double) usedMemory / maxMemory * 100;
 
-                int percent = 80;
+                int percent = 90;
                 if (usagePercentage > percent) { // 设置内存占用阈值
-                    try {
-                        log.error("userPercentage超过{}%,准备heapdump并退出程序", percent);
-                        generateHeapDump("./logs/dumpoom.hprof");
-                    } catch (Exception e) {
-                        log.error("generate heapdump ERROR", e);
-                    }
-                    try{
-                        Runtime.getRuntime().exec("jstat -gcutil 1 > ./logs/jstat_result.txt");
-                    }catch (Exception e){
+                    if (count.incrementAndGet() > 10) {
+                        try {
+                            log.error("userPercentage超过{}%,准备heapdump并退出程序", percent);
+                            generateHeapDump("./logs/dumpoom.hprof");
+                        } catch (Exception e) {
+                            log.error("generate heapdump ERROR", e);
+                        }
+                        try {
+                            Runtime.getRuntime().exec("jstat -gcutil 1 > ./logs/jstat_result.txt");
+                        } catch (Exception e) {
 
+                        }
+                        System.exit(0); // 触发一次后退出监控
                     }
-                    System.exit(0); // 触发一次后退出监控
+                } else {
+                    count.set(0);
                 }
             }
         }, 5 * 60 * 1000, 10000); // 每 10 秒检查一次
