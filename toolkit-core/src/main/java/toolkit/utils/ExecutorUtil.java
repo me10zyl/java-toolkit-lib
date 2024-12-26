@@ -3,6 +3,7 @@ package toolkit.utils;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
+import toolkit.traceid.MDCUtil;
 
 import javax.annotation.PreDestroy;
 import java.util.concurrent.*;
@@ -19,10 +20,10 @@ public class ExecutorUtil {
             executorService = Executors.newFixedThreadPool(threadSize);
             cache.put(name, executorService);
         }
-        String globalTraceId = MDC.get("globalTraceId");
+        String globalTraceId = MDCUtil.getMDCGlobalTraceId();
         return executorService.submit(() -> {
             try {
-                MDC.put("globalTraceId", globalTraceId);
+                MDCUtil.putMDCGlobalTraceId(globalTraceId);
                 runnable.run();
             } catch (Exception e) {
                 log.error("线程执行出错", e);

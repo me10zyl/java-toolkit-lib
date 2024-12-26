@@ -7,6 +7,7 @@ import org.slf4j.MDC;
 import org.springframework.aop.Pointcut;
 import org.springframework.aop.support.AbstractPointcutAdvisor;
 import org.springframework.stereotype.Component;
+import toolkit.traceid.MDCUtil;
 import toolkit.traceid.PrefixMatchJoinPoint;
 
 import java.util.UUID;
@@ -29,7 +30,7 @@ public class GlobalTraceIdAspect extends AbstractPointcutAdvisor {
     }
 
     public void before(String methodName) throws Throwable {
-        MDC.put("globalTraceId", UUID.randomUUID().toString().substring(0, 8));
+        MDCUtil.putMDCGlobalTraceId();
         MDC.put("methodName", methodName);
     }
 
