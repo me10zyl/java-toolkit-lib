@@ -1,6 +1,7 @@
 package toolkit.utils;
 
 import cn.hutool.core.bean.BeanUtil;
+import com.baomidou.mybatisplus.extension.service.IService;
 import lombok.Data;
 
 import java.util.ArrayList;
@@ -18,5 +19,20 @@ public class Patch<T>{
         list.setDeleteList(BeanUtil.copyToList(deleteList,clazz));
         list.setUpdateList(BeanUtil.copyToList(updateList, clazz));
         return list;
+    }
+
+    public void applyPatch(IService<T> service) {
+        List<T> deleteList = this.getDeleteList();
+        if (!deleteList.isEmpty()) {
+            service.removeByIds(deleteList);
+        }
+        List<T> insertList = this.getInsertList();
+        if (!insertList.isEmpty()) {
+            service.saveBatch(insertList);
+        }
+        List<T> updateList = this.getUpdateList();
+        if (!updateList.isEmpty()) {
+            service.updateBatchById(updateList);
+        }
     }
 }
