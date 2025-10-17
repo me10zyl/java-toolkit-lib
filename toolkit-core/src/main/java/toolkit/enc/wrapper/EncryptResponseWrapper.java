@@ -28,10 +28,7 @@ public class EncryptResponseWrapper extends HttpServletResponseWrapper {
                 byteArrayOutputStream.write(b);
             }
 
-            @Override
-            public boolean isFinished() {
-                return false;
-            }
+
 
             @Override
             public boolean isReady() {

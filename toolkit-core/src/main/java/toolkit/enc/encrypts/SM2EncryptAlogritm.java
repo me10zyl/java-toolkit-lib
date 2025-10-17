@@ -55,6 +55,10 @@ public class SM2EncryptAlogritm implements EncryptAlogritm {
         System.out.println(keyPair);
         System.out.println(sm2.getPublicKey(keyPair.getPrivateKey()));
     }
+
+    //后端私钥：009bee2085e9ecbdc43b83982f55e0b2a80644f9f143afde542394c3a5653ad886
+    //后端公钥: 049bd1dd0b056fea9deb618719e298482c1322dae87bea89def099ef122b8817f41b1f64f50b4501d3f97e3caa66bfd4d190b13f2f6716816fd8491a6f5f238ee6
+
 }
 
 
