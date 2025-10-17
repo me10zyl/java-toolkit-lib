@@ -1,8 +1,6 @@
 package toolkit.enc.filter;
 
-import cn.hutool.core.util.HexUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.crypto.digest.MD5;
 import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -18,7 +16,6 @@ import toolkit.enc.dto.PrivateKey;
 import toolkit.enc.dto.PublicKey;
 import toolkit.enc.encrypts.EncryptAlogritm;
 import toolkit.enc.encrypts.EncryptFactory;
-import toolkit.enc.encrypts.MD5Util;
 import toolkit.enc.properties.EncProperties;
 import toolkit.enc.wrapper.EncryptResponseWrapper;
 import toolkit.enc.wrapper.RepeatableReadRequestWrapper;
@@ -33,7 +30,6 @@ import java.security.SecureRandom;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
-import java.util.Base64;
 import java.util.Date;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -110,28 +106,23 @@ public class HttpBodyEncFilter implements Filter {
                 new RepeatableReadRequestWrapper(httpServletRequest, decryptedBodyBytes);
 
         // 6. 将包装后的请求对象传递给后续的过滤器链和 DispatcherServlet
-        chain.doFilter(wrappedRequest, new EncryptResponseWrapper((HttpServletResponse) response, new Function<String, String>() {
-            @Override
-            public String apply(String s) {
-                return doEncrypt(s);
-            }
-        }));
+        chain.doFilter(wrappedRequest, response);
     }
 
-    private void checkSign(String decryptedText, String sign, String key) {
+    private void checkSign(String decryptedText, String sign, byte[] key) {
         try {
             JsonNode jsonNode = objectMapper.readTree(decryptedText);
             //排序
-            String timestamp = jsonNode.get("timestamp").asText();
-            if(StrUtil.isBlank(timestamp)){
+            JsonNode timestamp = jsonNode.get("timestamp");
+            if(timestamp == null || StrUtil.isBlank(timestamp.asText())){
                 throw new RuntimeException("timestamp为空");
             }
-            String nonce = jsonNode.get("nonce").asText();
-            if(StrUtil.isBlank(timestamp)){
+            JsonNode nonce = jsonNode.get("nonce");
+            if(nonce == null || StrUtil.isBlank(nonce.asText())){
                 throw new RuntimeException("nonce为空");
             }
-            SimpleDateFormat yyyyMMssHHmmss = new SimpleDateFormat("yyyyMMssHHmmss");
-            Date parse = yyyyMMssHHmmss.parse(timestamp);
+            SimpleDateFormat yyyyMMssHHmmss = new SimpleDateFormat("yyyyMMddHHmmss");
+            Date parse = yyyyMMssHHmmss.parse(timestamp.asText());
             if((parse.getTime() - System.currentTimeMillis()) > 5 * 60 * 10000){
                 throw new RuntimeException("timestamp错误");
             }
@@ -140,7 +131,9 @@ public class HttpBodyEncFilter implements Filter {
             }
 
             EncryptAlogritm md5 = EncryptFactory.getEncryptAlogritm(EncryptAlogritmEnum.MD5);
-            if(sign.equals(md5.hash((timestamp + nonce + key).getBytes()))){
+            String s = timestamp.asText() + nonce.asText() + md5.hash(key);
+            log.info("originStr:"  + s);
+            if(!sign.equals(md5.hash(s.getBytes()))){
                 throw new RuntimeException("sign错误");
             }
 //            JSONObject jsonObject = JSONObject.parseObject(decryptedText);
@@ -156,21 +149,7 @@ public class HttpBodyEncFilter implements Filter {
         }
     }
 
-    private String doEncrypt(String originStr) {
-        byte[] sm4Key = new byte[16];
-        new SecureRandom().nextBytes(sm4Key);
-        EncryptAlogritm sm4 = EncryptFactory.getEncryptAlogritm(EncryptAlogritmEnum.SM4_ECB);
-        String encryptedText = sm4.encryptToBase64(originStr, sm4Key, null);
-        EncryptAlogritm sm2 = EncryptFactory.getEncryptAlogritm(EncryptAlogritmEnum.SM2);
-        HttpEncBody httpEncBody = new HttpEncBody();
-        httpEncBody.setEncryptKey(sm2.encryptToBase64(new PublicKey(encProperties.getSm2PublicKeyHex2()), sm4Key));
-        httpEncBody.setEncryptContent(encryptedText);
-        try {
-            return objectMapper.writeValueAsString(httpEncBody);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
-    }
+
 
     private byte[] readAllBytes(InputStream inputStream) {
         // 读取所有字节
@@ -209,7 +188,7 @@ public class HttpBodyEncFilter implements Filter {
         EncryptAlogritm sm4 = EncryptFactory.getEncryptAlogritm(EncryptAlogritmEnum.SM4_ECB);
         byte[] sm4Key = sm2.decryptFromBase64(new PrivateKey(encProperties.getSm2PrivateKeyHex()), httpEncBody.getEncryptKey());
         String s = sm4.decryptFromBase64(httpEncBody.getEncryptContent(), sm4Key, null);
-        checkSign(s, httpEncBody.getSignature(), MD5.create().digestHex(sm4Key));
+        checkSign(s, httpEncBody.getSignature(), sm4Key);
         return s;
     }
 }
