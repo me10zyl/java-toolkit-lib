@@ -36,6 +36,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * 全局请求体解密过滤器
@@ -47,10 +48,10 @@ public class HttpBodyEncFilter implements Filter {
     private final EncProperties encProperties;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
     private final String[] excludePatterns;
-    private final boolean isTestEnv;
     private final ObjectMapper objectMapper;
+    private final Supplier<Boolean> isTestEnv;
 
-    public HttpBodyEncFilter(EncProperties encProperties, String[] excludePatterns, boolean isTestEnv, ObjectMapper objectMapper) {
+    public HttpBodyEncFilter(EncProperties encProperties, String[] excludePatterns, Supplier<Boolean> isTestEnv, ObjectMapper objectMapper) {
         this.encProperties = encProperties;
         this.excludePatterns = excludePatterns;
         this.isTestEnv = isTestEnv;
@@ -194,7 +195,7 @@ public class HttpBodyEncFilter implements Filter {
         }
 
 
-        if (isTestEnv && request.getHeader(Constants.DISABLE_ENC_HEADER) != null) {
+        if (isTestEnv != null && isTestEnv.get() && request.getHeader(Constants.DISABLE_ENC_HEADER) != null) {
             log.info("Disable encrypt for test request");
             return false;
         }
