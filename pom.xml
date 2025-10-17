@@ -18,5 +18,12 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
+    <distributionManagement>
+        <repository>
+            <id>maven-releases</id>
+            <name>qianxing Release Repository</name>
+            <url>${deploySnapshotRepository}</url>
+        </repository>
+    </distributionManagement>
 
 </project>
