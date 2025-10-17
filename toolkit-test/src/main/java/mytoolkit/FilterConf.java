@@ -1,19 +1,19 @@
 package mytoolkit;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.qxnw.scyc.common.aop.controlleradvice.RestReturnWrapperHandler;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import toolkit.enc.filter.HttpBodyEncFilter;
 import toolkit.enc.properties.EncProperties;
+import toolkit.wrapper.RestReturnWrapperHandler;
 
 @Configuration
 public class FilterConf {
 
     @Bean
-    public com.qxnw.scyc.common.aop.controlleradvice.RestReturnWrapperHandler restReturnWrapperHandler(EncProperties encProperties, ObjectMapper objectMapper){
+    public RestReturnWrapperHandler restReturnWrapperHandler(EncProperties encProperties, ObjectMapper objectMapper){
         return new RestReturnWrapperHandler(encProperties, objectMapper);
     }
 
