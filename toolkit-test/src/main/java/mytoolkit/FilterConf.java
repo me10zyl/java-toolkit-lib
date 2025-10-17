@@ -14,7 +14,9 @@ public class FilterConf {
 
     @Bean
     public RestReturnWrapperHandler restReturnWrapperHandler(EncProperties encProperties, ObjectMapper objectMapper){
-        return new RestReturnWrapperHandler(encProperties, objectMapper);
+        return new RestReturnWrapperHandler(encProperties, objectMapper, new String[]{
+                "/test/gen"
+        });
     }
 
     @Bean

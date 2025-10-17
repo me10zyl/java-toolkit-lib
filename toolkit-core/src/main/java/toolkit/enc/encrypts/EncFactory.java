@@ -3,7 +3,7 @@ package toolkit.enc.encrypts;
 
 import toolkit.enc.dto.EncryptAlogritmEnum;
 
-public class EncryptFactory  {
+public class EncFactory {
 
 
     public static EncryptAlogritm getEncryptAlogritm(EncryptAlogritmEnum algorithm) {
@@ -19,6 +19,8 @@ public class EncryptFactory  {
             return new MD5HashAlogritm();
         }else if(algorithm.equals(EncryptAlogritmEnum.SM3)){
             return new SM3HashAlogritm();
+        }else if(algorithm.equals(EncryptAlogritmEnum.RSA)){
+            return new RSAEncryptAlogritm();
         }
         throw new IllegalArgumentException("不支持的加密算法: " + algorithm);
     }

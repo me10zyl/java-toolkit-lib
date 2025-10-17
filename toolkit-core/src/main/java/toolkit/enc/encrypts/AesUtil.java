@@ -25,10 +25,10 @@ public class AesUtil {
         }
     }
 
-    public static String decrypt(String encryptedValue) {
+    public static String decrypt(String encryptedValue, byte[] key) {
         try {
             Cipher cipher = Cipher.getInstance(ALGORITHM);
-            cipher.init(Cipher.DECRYPT_MODE, getSecretKey(new byte[32]));
+            cipher.init(Cipher.DECRYPT_MODE,  new SecretKeySpec(key, ALGORITHM));
             byte[] decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(encryptedValue));
             return new String(decryptedBytes, StandardCharsets.UTF_8);
         } catch (Exception e) {

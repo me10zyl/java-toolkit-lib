@@ -1,14 +1,10 @@
 package toolkit.wrapper;
 
 
-import cn.hutool.core.util.StrUtil;
 import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpEntity;
@@ -22,29 +18,31 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 import toolkit.enc.dto.EncryptAlogritmEnum;
 import toolkit.enc.dto.HttpEncBody;
 import toolkit.enc.dto.PublicKey;
+import toolkit.enc.encrypts.AESEncryptAlogritm;
 import toolkit.enc.encrypts.EncryptAlogritm;
-import toolkit.enc.encrypts.EncryptFactory;
+import toolkit.enc.encrypts.EncFactory;
 import toolkit.enc.properties.EncProperties;
 
-import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Arrays;
-import java.util.Base64;
-import java.util.List;
-import java.util.stream.Stream;
 
 
 @Slf4j
 @ControllerAdvice
-@RequiredArgsConstructor
 public class RestReturnWrapperHandler implements
         ResponseBodyAdvice<Object> {
 
     private final EncProperties encProperties;
     private final ObjectMapper objectMapper;
+    private String[] excludePaths;
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
+    public RestReturnWrapperHandler(EncProperties encProperties, ObjectMapper objectMapper, String[] excludePaths) {
+        this.encProperties = encProperties;
+        this.objectMapper = objectMapper;
+        this.excludePaths = excludePaths;
+    }
 
     @Override
     public boolean supports(MethodParameter methodParameter, Class<? extends HttpMessageConverter<?>> converterType) {
@@ -72,6 +70,22 @@ public class RestReturnWrapperHandler implements
     }
 
     private Object encryptResponse(Object body, ServerHttpRequest serverHttpRequest, ServerHttpResponse serverHttpResponse) {
+        if(!encProperties.isEnabled()){
+            return body;
+        }
+        if (excludePaths != null) {
+            boolean matched = Arrays.stream(excludePaths).anyMatch(pattern -> {
+                return pathMatcher.match(pattern, serverHttpRequest.getURI().getPath());
+            });
+            if (matched) {
+                return body;
+            }
+        }
+        // 仅拦截 POST 和 PUT 请求
+        String method = serverHttpRequest.getMethod().toString();
+        if (!"POST".equalsIgnoreCase(method) && !"PUT".equalsIgnoreCase(method)) {
+            return false;
+        }
         String jsonString = null;
         try {
             jsonString = objectMapper.writeValueAsString(body);
@@ -82,18 +96,27 @@ public class RestReturnWrapperHandler implements
     }
 
     private String doEncrypt(String originStr) {
-        byte[] sm4Key = new byte[16];
-        new SecureRandom().nextBytes(sm4Key);
-        EncryptAlogritm sm4 = EncryptFactory.getEncryptAlogritm(EncryptAlogritmEnum.SM4_ECB);
-        String encryptedText = sm4.encryptToBase64(originStr, sm4Key, null);
-        EncryptAlogritm sm2 = EncryptFactory.getEncryptAlogritm(EncryptAlogritmEnum.SM2);
-        HttpEncBody httpEncBody = new HttpEncBody();
-        httpEncBody.setEncryptKey(sm2.encryptToBase64(new PublicKey(encProperties.getSm2PublicKeyHex2()), sm4Key));
-        httpEncBody.setEncryptContent(encryptedText);
+        EncryptAlogritm aes = EncFactory.getEncryptAlogritm(EncryptAlogritmEnum.AES);
+        String s = aes.encryptToBase64(originStr, encProperties.getAesKeyHex().getBytes(StandardCharsets.UTF_8), null);
+        HttpEncBody encBody = new HttpEncBody();
+        encBody.setEncryptContent(s);
         try {
-            return objectMapper.writeValueAsString(httpEncBody);
+            return objectMapper.writeValueAsString(encBody);
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
+//        byte[] sm4Key = new byte[16];
+//        new SecureRandom().nextBytes(sm4Key);
+//        EncryptAlogritm sm4 = EncFactory.getEncryptAlogritm(EncryptAlogritmEnum.SM4_ECB);
+//        String encryptedText = sm4.encryptToBase64(originStr, sm4Key, null);
+//        EncryptAlogritm rsa = EncFactory.getEncryptAlogritm(EncryptAlogritmEnum.RSA);
+//        HttpEncBody httpEncBody = new HttpEncBody();
+//        httpEncBody.setEncryptKey(rsa.encryptToBase64(new PublicKey(encProperties.getRsaPublicKeyHex2()), sm4Key));
+//        httpEncBody.setEncryptContent(encryptedText);
+//        try {
+//            return objectMapper.writeValueAsString(httpEncBody);
+//        } catch (JsonProcessingException e) {
+//            throw new RuntimeException(e);
+//        }
     }
 }

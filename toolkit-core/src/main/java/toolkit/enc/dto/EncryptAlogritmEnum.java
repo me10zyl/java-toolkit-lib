@@ -1,5 +1,5 @@
 package toolkit.enc.dto;
 
 public enum EncryptAlogritmEnum {
-    SM4_ECB, AES, SM4_CBC, SM2, MD5, SM3
+    SM4_ECB, AES, SM4_CBC, SM2, MD5, SM3,RSA
 }
