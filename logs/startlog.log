@@ -1381,3 +1381,5 @@ java.lang.ClassCastException: toolkit.enc.dto.HttpEncBody cannot be cast to java
 2025-10-20 11:55:33.120 |  |  | INFO  | [http-nio-8080-exec-1] | o.s.web.servlet.DispatcherServlet:525 | Initializing Servlet 'dispatcherServlet'
 2025-10-20 11:55:33.120 |  |  | INFO  | [http-nio-8080-exec-1] | o.s.web.servlet.DispatcherServlet:547 | Completed initialization in 0 ms
 2025-10-20 11:55:34.421 |  |  | INFO  | [http-nio-8080-exec-1] | toolkit.enc.filter.HttpBodyEncFilter:78 | Decrypted request body: {}
+2025-10-20 11:57:41.756 |  |  | INFO  | [http-nio-8080-exec-5] | toolkit.enc.filter.HttpBodyEncFilter:78 | Decrypted request body: {}
+2025-10-20 11:57:41.758 |  |  | INFO  | [http-nio-8080-exec-5] | t.e.advice.RestReturnWrapperHandler:71 | Before encrypt response body: {"headers":{"content-length":"62","host":"localhost:8080","content-type":"application/json","connection":"keep-alive","accept-encoding":"gzip, deflate, br","user-agent":"Apifox/1.0.0 (https://apifox.com)","accept":"*/*"},"method":"POST","body":"{}","parameters":{},"url":"http://localhost:8080/api/test/echo"}
