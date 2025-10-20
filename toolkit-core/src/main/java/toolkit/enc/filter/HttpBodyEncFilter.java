@@ -6,19 +6,17 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.bouncycastle.util.encoders.Hex;
 import org.springframework.core.annotation.Order;
-import org.springframework.util.AntPathMatcher;
+import org.springframework.core.env.Environment;
 import org.springframework.util.StreamUtils;
-import toolkit.dto.Constants;
 import toolkit.enc.dto.EncryptAlogritmEnum;
 import toolkit.enc.dto.HttpEncBody;
-import toolkit.enc.dto.PrivateKey;
 import toolkit.enc.encrypts.EncryptAlogritm;
 import toolkit.enc.encrypts.EncFactory;
 import toolkit.enc.properties.EncProperties;
+import toolkit.enc.util.CommonUtil;
 import toolkit.enc.wrapper.RepeatableReadRequestWrapper;
-import toolkit.exception.EncException;
+import toolkit.enc.exception.EncException;
 
 import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
@@ -27,10 +25,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
-import java.util.Base64;
 import java.util.Date;
-import java.util.function.Supplier;
 
 /**
  * 全局请求体解密过滤器
@@ -40,16 +35,13 @@ import java.util.function.Supplier;
 public class HttpBodyEncFilter implements Filter {
 
     private final EncProperties encProperties;
-    private final AntPathMatcher pathMatcher = new AntPathMatcher();
-    private final String[] excludePatterns;
     private final ObjectMapper objectMapper;
-    private final Supplier<Boolean> isTestEnv;
+    private final CommonUtil commonUtil;
 
-    public HttpBodyEncFilter(EncProperties encProperties, String[] excludePatterns, Supplier<Boolean> isTestEnv, ObjectMapper objectMapper) {
+    public HttpBodyEncFilter(EncProperties encProperties, ObjectMapper objectMapper, Environment environment, String[] testEnvProfiles, String[] excludePatterns) {
         this.encProperties = encProperties;
-        this.excludePatterns = excludePatterns;
-        this.isTestEnv = isTestEnv;
         this.objectMapper = objectMapper;
+        this.commonUtil = new CommonUtil(encProperties, environment, excludePatterns, testEnvProfiles);
     }
 
     @Override
@@ -63,19 +55,9 @@ public class HttpBodyEncFilter implements Filter {
             chain.doFilter(request, response);
             return;
         }
-        // 使用 AntPathMatcher 进行模式匹配
-        if (excludePatterns != null) {
-            boolean matched = Arrays.stream(excludePatterns).anyMatch(pattern -> {
-                return pathMatcher.match(pattern, ((HttpServletRequest) request).getRequestURI());
-            });
-            if (matched) {
-                chain.doFilter(httpServletRequest, response);
-                return;
-            }
-        }
 
         // 2. 检查是否需要加密 (例如：只处理 POST/PUT 请求，并检查特定的 Header)
-        if (!isDecryptionRequired(httpServletRequest)) {
+        if (!commonUtil.isDecryptionRequired(httpServletRequest, null)) {
             chain.doFilter(httpServletRequest, response);
             return;
         }
@@ -157,26 +139,6 @@ public class HttpBodyEncFilter implements Filter {
 
     }
 
-    // --- 辅助方法 ---
-
-    private boolean isDecryptionRequired(HttpServletRequest request) {
-        if (!encProperties.isEnabled()) {
-            return false;
-        }
-        // 仅拦截 POST 和 PUT 请求
-        String method = request.getMethod();
-        if (!"POST".equalsIgnoreCase(method) && !"PUT".equalsIgnoreCase(method)) {
-            return false;
-        }
-
-        if (isTestEnv != null && isTestEnv.get() && request.getHeader(Constants.DISABLE_ENC_HEADER) != null) {
-            log.info("Disable encrypt for test request");
-            return false;
-        }
-
-        return true; // 默认对所有 POST/PUT 请求进行处理
-    }
-
     private String performDecryption(String encryptedText) throws Exception {
         HttpEncBody httpEncBody = JSONObject.parseObject(encryptedText, HttpEncBody.class);
 //        EncryptAlogritm rsa = EncFactory.getEncryptAlogritm(EncryptAlogritmEnum.RSA);
@@ -184,7 +146,7 @@ public class HttpBodyEncFilter implements Filter {
 //        byte[] sm4Key = rsa.decryptFromBase64(new PrivateKey(encProperties.getRsaPrivateKeyHex()), httpEncBody.getEncryptKey());
         EncryptAlogritm aes = EncFactory.getEncryptAlogritm(EncryptAlogritmEnum.AES);
 //        String sm4Key = encProperties.getSm4KeyHex();
-        String s = aes.decryptFromBase64(httpEncBody.getEncryptContent(), encProperties.getAesKeyHex().getBytes(StandardCharsets.UTF_8), null );
+        String s = aes.decryptFromBase64(httpEncBody.getEncryptContent(), encProperties.getAesKey().getBytes(StandardCharsets.UTF_8), null );
                 //;sm4.decryptFromBase64(httpEncBody.getEncryptContent(),Hex.decode(sm4Key), null);
 //        checkSign(s, httpEncBody.getSignature(), sm4Key.get);
         return s;

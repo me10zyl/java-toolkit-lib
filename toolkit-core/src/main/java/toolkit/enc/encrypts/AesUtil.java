@@ -1,5 +1,7 @@
 package toolkit.enc.encrypts;
 
+import toolkit.enc.exception.EncException;
+
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
@@ -21,7 +23,7 @@ public class AesUtil {
             byte[] encryptedBytes = cipher.doFinal(value.getBytes(StandardCharsets.UTF_8));
             return Base64.getEncoder().encodeToString(encryptedBytes);
         } catch (Exception e) {
-            throw new RuntimeException("Encryption failed", e);
+            throw new EncException("Encryption failed", e);
         }
     }
 
@@ -32,7 +34,7 @@ public class AesUtil {
             byte[] decryptedBytes = cipher.doFinal(Base64.getDecoder().decode(encryptedValue));
             return new String(decryptedBytes, StandardCharsets.UTF_8);
         } catch (Exception e) {
-            throw new RuntimeException("Decryption failed", e);
+            throw new EncException("Decryption failed", e);
         }
     }
 }

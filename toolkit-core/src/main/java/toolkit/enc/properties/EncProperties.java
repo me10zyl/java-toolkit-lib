@@ -20,5 +20,5 @@ public class EncProperties {
 
     private String sm4KeyHex;
 
-    private String aesKeyHex;
+    private String aesKey;
 }

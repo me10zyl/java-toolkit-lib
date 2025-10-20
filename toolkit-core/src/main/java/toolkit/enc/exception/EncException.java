@@ -1,4 +1,4 @@
-package toolkit.exception;
+package toolkit.enc.exception;
 
 
 public class EncException extends RuntimeException{

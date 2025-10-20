@@ -1,31 +1,27 @@
-package toolkit.wrapper;
+package toolkit.enc.advice;
 
 
-import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.MethodParameter;
+import org.springframework.core.env.Environment;
 import org.springframework.core.io.Resource;
-import org.springframework.http.HttpEntity;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
-import org.springframework.util.AntPathMatcher;
+import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 import toolkit.enc.dto.EncryptAlogritmEnum;
 import toolkit.enc.dto.HttpEncBody;
-import toolkit.enc.dto.PublicKey;
-import toolkit.enc.encrypts.AESEncryptAlogritm;
 import toolkit.enc.encrypts.EncryptAlogritm;
 import toolkit.enc.encrypts.EncFactory;
 import toolkit.enc.properties.EncProperties;
+import toolkit.enc.util.CommonUtil;
 
 import java.nio.charset.StandardCharsets;
-import java.security.SecureRandom;
-import java.util.Arrays;
 
 
 @Slf4j
@@ -35,13 +31,12 @@ public class RestReturnWrapperHandler implements
 
     private final EncProperties encProperties;
     private final ObjectMapper objectMapper;
-    private String[] excludePaths;
-    private final AntPathMatcher pathMatcher = new AntPathMatcher();
+    private final CommonUtil commonUtil;
 
-    public RestReturnWrapperHandler(EncProperties encProperties, ObjectMapper objectMapper, String[] excludePaths) {
+    public RestReturnWrapperHandler(EncProperties encProperties, ObjectMapper objectMapper, Environment environment, String[] testEnvProfiles , String[] excludePaths) {
         this.encProperties = encProperties;
         this.objectMapper = objectMapper;
-        this.excludePaths = excludePaths;
+        this.commonUtil = new CommonUtil(encProperties, environment, excludePaths, testEnvProfiles);
     }
 
     @Override
@@ -62,29 +57,29 @@ public class RestReturnWrapperHandler implements
         if (body instanceof Resource) {
             return body;
         }
-        if (body instanceof HttpEntity) {
-            return body;
-        } else {
-            return encryptResponse(body, serverHttpRequest, serverHttpResponse);
-        }
+        return encryptResponse(body, serverHttpRequest, serverHttpResponse);
     }
 
+
     private Object encryptResponse(Object body, ServerHttpRequest serverHttpRequest, ServerHttpResponse serverHttpResponse) {
-        if(!encProperties.isEnabled()){
+        boolean decryptionRequired = commonUtil.isDecryptionRequired(null, (ServletServerHttpRequest) serverHttpRequest);
+        if(!decryptionRequired){
             return body;
         }
-        if (excludePaths != null) {
-            boolean matched = Arrays.stream(excludePaths).anyMatch(pattern -> {
-                return pathMatcher.match(pattern, serverHttpRequest.getURI().getPath());
-            });
-            if (matched) {
-                return body;
+        if(encProperties.isLogDecrypt()){
+            try {
+                log.info("Decrypted response body: {}", toJson(body));
+            } catch (Exception e){
+
             }
         }
-        // 仅拦截 POST 和 PUT 请求
-        String method = serverHttpRequest.getMethod().toString();
-        if (!"POST".equalsIgnoreCase(method) && !"PUT".equalsIgnoreCase(method)) {
-            return false;
+        String jsonString = toJson(body);
+        return doEncrypt(jsonString);
+    }
+
+    private String toJson(Object body) {
+        if(body instanceof String){
+            return (String) body;
         }
         String jsonString = null;
         try {
@@ -92,19 +87,15 @@ public class RestReturnWrapperHandler implements
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }
-        return doEncrypt(jsonString);
+        return jsonString;
     }
 
-    private String doEncrypt(String originStr) {
+    private Object doEncrypt(String originStr) {
         EncryptAlogritm aes = EncFactory.getEncryptAlogritm(EncryptAlogritmEnum.AES);
-        String s = aes.encryptToBase64(originStr, encProperties.getAesKeyHex().getBytes(StandardCharsets.UTF_8), null);
+        String s = aes.encryptToBase64(originStr, encProperties.getAesKey().getBytes(StandardCharsets.UTF_8), null);
         HttpEncBody encBody = new HttpEncBody();
         encBody.setEncryptContent(s);
-        try {
-            return objectMapper.writeValueAsString(encBody);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
-        }
+        return toJson(encBody);
 //        byte[] sm4Key = new byte[16];
 //        new SecureRandom().nextBytes(sm4Key);
 //        EncryptAlogritm sm4 = EncFactory.getEncryptAlogritm(EncryptAlogritmEnum.SM4_ECB);
