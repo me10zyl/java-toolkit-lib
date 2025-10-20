@@ -6,14 +6,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.util.encoders.Hex;
 import org.springframework.core.MethodParameter;
-import org.springframework.core.env.Environment;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
-import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
 import toolkit.enc.dto.*;
@@ -21,7 +19,6 @@ import toolkit.enc.encrypts.EncryptAlogritm;
 import toolkit.enc.encrypts.EncFactory;
 import toolkit.enc.exception.EncException;
 import toolkit.enc.properties.EncProperties;
-import toolkit.enc.util.CommonUtil;
 
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
@@ -75,8 +72,12 @@ public class EncryptResponseBodyAdvice implements
 
             }
         }
+        boolean isString = false;
+        if (body instanceof String) {
+            isString = true;
+        }
         String jsonString = toJson(body);
-        return doEncrypt(jsonString);
+        return doEncrypt(jsonString, isString);
     }
 
     private String toJson(Object body) {
@@ -92,19 +93,19 @@ public class EncryptResponseBodyAdvice implements
         return jsonString;
     }
 
-    private Object doEncrypt(String originStr) {
+    private Object doEncrypt(String originStr, boolean isString) {
         if (encProperties.getEncryptAlgorithm().equals(SupportEncrypt.AES)) {
             EncryptAlogritm aes = EncFactory.getEncryptAlogritm(EncEnum.AES);
             String s = aes.encryptToBase64(originStr, encProperties.getAesKey().getBytes(StandardCharsets.UTF_8), null);
             HttpEncBody encBody = new HttpEncBody();
             encBody.setEncryptContent(s);
-            return encBody;
+            return handleBody(encBody, isString);
         } else if (encProperties.getEncryptAlgorithm().equals(SupportEncrypt.SM4)) {
             EncryptAlogritm sm4 = EncFactory.getEncryptAlogritm(EncEnum.SM4_ECB);
             String s = sm4.encryptToBase64(originStr, encProperties.getSm4Key().getBytes(StandardCharsets.UTF_8), null);
             HttpEncBody encBody = new HttpEncBody();
             encBody.setEncryptContent(s);
-            return encBody;
+            return handleBody(encBody, isString);
         } else if (encProperties.getEncryptAlgorithm().equals(SupportEncrypt.RSA_AES)) {
             EncryptAlogritm aes = EncFactory.getEncryptAlogritm(EncEnum.AES);
             EncryptAlogritm rsa = EncFactory.getEncryptAlogritm(EncEnum.RSA);
@@ -114,7 +115,7 @@ public class EncryptResponseBodyAdvice implements
             HttpEncBody encBody = new HttpEncBody();
             encBody.setEncryptContent(s);
             encBody.setEncryptKey(rsa.encryptToBase64(new PublicKey(base64ToHex(encProperties.getRsaPublicKeyBase64Frontend())), key));
-            return encBody;
+            return handleBody(encBody, isString);
         } else if (encProperties.getEncryptAlgorithm().equals(SupportEncrypt.SM2_SM4)) {
             EncryptAlogritm sm4 = EncFactory.getEncryptAlogritm(EncEnum.SM4_ECB);
             EncryptAlogritm sm2 = EncFactory.getEncryptAlogritm(EncEnum.SM2);
@@ -124,10 +125,21 @@ public class EncryptResponseBodyAdvice implements
             HttpEncBody encBody = new HttpEncBody();
             encBody.setEncryptContent(s);
             encBody.setEncryptKey(sm2.encryptToBase64(new PublicKey(encProperties.getSm2PublicKeyHexFrontend()), key));
-            return encBody;
+            return handleBody(encBody, isString);
         }else{
             throw new EncException("不支持的加密算法");
         }
+    }
+
+    private Object handleBody(HttpEncBody encBody, boolean isString) {
+        if (isString) {
+            try {
+                return objectMapper.writeValueAsString(encBody);
+            } catch (JsonProcessingException e) {
+                throw new EncException(e);
+            }
+        }
+        return encBody;
     }
 
     private String base64ToHex(String rsaPrivateKeyBase64) {
