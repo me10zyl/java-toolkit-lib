@@ -128,19 +128,6 @@ public class EncryptResponseBodyAdvice implements
         }else{
             throw new EncException("不支持的加密算法");
         }
-//        byte[] sm4Key = new byte[16];
-//        new SecureRandom().nextBytes(sm4Key);
-//        EncryptAlogritm sm4 = EncFactory.getEncryptAlogritm(EncryptAlogritmEnum.SM4_ECB);
-//        String encryptedText = sm4.encryptToBase64(originStr, sm4Key, null);
-//        EncryptAlogritm rsa = EncFactory.getEncryptAlogritm(EncryptAlogritmEnum.RSA);
-//        HttpEncBody httpEncBody = new HttpEncBody();
-//        httpEncBody.setEncryptKey(rsa.encryptToBase64(new PublicKey(encProperties.getRsaPublicKeyHex2()), sm4Key));
-//        httpEncBody.setEncryptContent(encryptedText);
-//        try {
-//            return objectMapper.writeValueAsString(httpEncBody);
-//        } catch (JsonProcessingException e) {
-//            throw new RuntimeException(e);
-//        }
     }
 
     private String base64ToHex(String rsaPrivateKeyBase64) {
