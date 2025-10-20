@@ -8,15 +8,15 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
 import toolkit.enc.filter.HttpBodyEncFilter;
 import toolkit.enc.properties.EncProperties;
-import toolkit.enc.advice.RestReturnWrapperHandler;
+import toolkit.enc.advice.EncryptResponseBodyAdvice;
 
 @Configuration
 public class FilterConf {
 
     private final String[] excludePatterns = {};
     @Bean
-    public RestReturnWrapperHandler restReturnWrapperHandler(EncProperties encProperties, ObjectMapper objectMapper, Environment environment) {
-        return new RestReturnWrapperHandler(encProperties, objectMapper, environment, new String[]{"test", "dev", "fat"}, excludePatterns);
+    public EncryptResponseBodyAdvice restReturnWrapperHandler(EncProperties encProperties, ObjectMapper objectMapper) {
+        return new EncryptResponseBodyAdvice(encProperties, objectMapper);
     }
 
     @Bean

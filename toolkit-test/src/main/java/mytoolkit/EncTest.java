@@ -1,15 +1,7 @@
 package mytoolkit;
 
-import cn.hutool.core.codec.Base64;
-import cn.hutool.crypto.asymmetric.SM2;
 import org.bouncycastle.util.encoders.Hex;
-import toolkit.enc.dto.EncryptAlogritmEnum;
-import toolkit.enc.dto.PrivateKey;
-import toolkit.enc.dto.PublicKey;
-import toolkit.enc.encrypts.EncryptAlogritm;
-import toolkit.enc.encrypts.EncFactory;
 
-import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 
 public class EncTest {

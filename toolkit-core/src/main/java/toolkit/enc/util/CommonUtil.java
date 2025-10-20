@@ -3,6 +3,7 @@ package toolkit.enc.util;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
+import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
@@ -47,12 +48,12 @@ public class CommonUtil {
         }
         boolean header = false;
         if (request == null) {
-            header = request2.getHeaders().containsKey(Constants.DISABLE_ENC_HEADER);
+            header = request2.getHeaders().containsKey(encProperties.getDisableHeader());
         } else {
             Enumeration<String> headerNames = request.getHeaderNames();
-            while (headerNames.hasMoreElements()){
+            while (headerNames.hasMoreElements()) {
                 String next = headerNames.nextElement();
-                if(next.equals(Constants.DISABLE_ENC_HEADER)){
+                if (next.equals(encProperties.getDisableHeader())) {
                     header = true;
                     break;
                 }
@@ -64,6 +65,11 @@ public class CommonUtil {
             return false;
         }
 
+
+        return true; // 默认对所有 POST/PUT 请求进行处理
+    }
+
+    public boolean excludePatternsMatched(HttpServletRequest request, ServletServerHttpRequest request2) {
         // 使用 AntPathMatcher 进行模式匹配
         if (excludePatterns != null) {
             boolean matched = Arrays.stream(excludePatterns).anyMatch(pattern -> {
@@ -71,11 +77,10 @@ public class CommonUtil {
                 return pathMatcher.match(pattern, requestURI);
             });
             if (matched) {
-                log.info("excludePattern matched, not encrypt");
-                return false;
+                log.info("excludePattern matched");
+                return true;
             }
         }
-
-        return true; // 默认对所有 POST/PUT 请求进行处理
+        return false;
     }
 }

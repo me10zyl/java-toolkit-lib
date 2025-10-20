@@ -15,7 +15,8 @@ import org.springframework.http.server.ServletServerHttpRequest;
 import org.springframework.stereotype.Component;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseBodyAdvice;
-import toolkit.enc.dto.EncryptAlogritmEnum;
+import toolkit.enc.dto.Constants;
+import toolkit.enc.dto.EncEnum;
 import toolkit.enc.dto.HttpEncBody;
 import toolkit.enc.encrypts.EncryptAlogritm;
 import toolkit.enc.encrypts.EncFactory;
@@ -27,18 +28,15 @@ import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @ControllerAdvice
-@Component("EncryptRestReturnWrapperHandler")
-public class RestReturnWrapperHandler implements
+public class EncryptResponseBodyAdvice implements
         ResponseBodyAdvice<Object> {
 
     private final EncProperties encProperties;
     private final ObjectMapper objectMapper;
-    private final CommonUtil commonUtil;
 
-    public RestReturnWrapperHandler(EncProperties encProperties, ObjectMapper objectMapper, Environment environment, String[] testEnvProfiles , String[] excludePaths) {
+    public EncryptResponseBodyAdvice(EncProperties encProperties, ObjectMapper objectMapper) {
         this.encProperties = encProperties;
         this.objectMapper = objectMapper;
-        this.commonUtil = new CommonUtil(encProperties, environment, excludePaths, testEnvProfiles);
     }
 
     @Override
@@ -64,7 +62,7 @@ public class RestReturnWrapperHandler implements
 
 
     private Object encryptResponse(Object body, ServerHttpRequest serverHttpRequest, ServerHttpResponse serverHttpResponse) {
-        boolean decryptionRequired = commonUtil.isDecryptionRequired(null, (ServletServerHttpRequest) serverHttpRequest);
+        boolean decryptionRequired = ((ServletServerHttpRequest)serverHttpRequest).getServletRequest().getAttribute(Constants.ATTR_NAME) != null;
         if(!decryptionRequired){
             return body;
         }
@@ -93,7 +91,7 @@ public class RestReturnWrapperHandler implements
     }
 
     private Object doEncrypt(String originStr) {
-        EncryptAlogritm aes = EncFactory.getEncryptAlogritm(EncryptAlogritmEnum.AES);
+        EncryptAlogritm aes = EncFactory.getEncryptAlogritm(EncEnum.AES);
         String s = aes.encryptToBase64(originStr, encProperties.getAesKey().getBytes(StandardCharsets.UTF_8), null);
         HttpEncBody encBody = new HttpEncBody();
         encBody.setEncryptContent(s);

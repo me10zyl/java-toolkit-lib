@@ -6,11 +6,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
+import org.bouncycastle.util.encoders.Hex;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 import org.springframework.util.StreamUtils;
-import toolkit.enc.dto.EncryptAlogritmEnum;
-import toolkit.enc.dto.HttpEncBody;
+import toolkit.enc.dto.*;
 import toolkit.enc.encrypts.EncryptAlogritm;
 import toolkit.enc.encrypts.EncFactory;
 import toolkit.enc.properties.EncProperties;
@@ -25,6 +25,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Base64;
 import java.util.Date;
 
 /**
@@ -61,6 +62,7 @@ public class HttpBodyEncFilter implements Filter {
             chain.doFilter(httpServletRequest, response);
             return;
         }
+        boolean matchedExclude = commonUtil.excludePatternsMatched(httpServletRequest, null);
 
         // 3. 读取原始请求体 (只能读一次)
         byte[] encryptedBody = StreamUtils.copyToByteArray(httpServletRequest.getInputStream());
@@ -68,8 +70,19 @@ public class HttpBodyEncFilter implements Filter {
 
         // 4. 执行解密逻辑 (此处应集成您的 SM4 解密方法)
         String decryptedText = null;
+        HttpEncBody httpEncBody = null;
         try {
-            decryptedText = performDecryption(encryptedText);
+             httpEncBody = JSONObject.parseObject(encryptedText, HttpEncBody.class);
+        }catch (Exception e){
+
+        }
+        if(matchedExclude && (httpEncBody == null || httpEncBody.getEncryptKey() == null)){
+            log.info("matchedExclude and no EncContent, not decrypt");
+            chain.doFilter(httpServletRequest, response);
+            return;
+        }
+        try {
+            decryptedText = performDecryption(httpEncBody);
         } catch (Exception e) {
             // 记录错误或返回错误响应
             throw new EncException(StrUtil.format("Decrypt request body failed（encryptedText:{}）", encryptedText), e);
@@ -77,7 +90,9 @@ public class HttpBodyEncFilter implements Filter {
         if (encProperties.isLogDecrypt()) {
             log.info("Decrypted request body: {}", decryptedText);
         }
-
+        if (encProperties.isCheckSign()) {
+            checkSign(decryptedText, httpEncBody.getSignature(), encProperties.getAesKey().getBytes(StandardCharsets.UTF_8));
+        }
 
         // 5. 创建包含解密后数据的 Request Wrapper
         byte[] decryptedBodyBytes = decryptedText.getBytes(StandardCharsets.UTF_8);
@@ -85,6 +100,7 @@ public class HttpBodyEncFilter implements Filter {
                 new RepeatableReadRequestWrapper(httpServletRequest, decryptedBodyBytes);
 
         // 6. 将包装后的请求对象传递给后续的过滤器链和 DispatcherServlet
+        wrappedRequest.setAttribute(Constants.ATTR_NAME, true);
         chain.doFilter(wrappedRequest, response);
     }
 
@@ -100,30 +116,22 @@ public class HttpBodyEncFilter implements Filter {
             if (nonce == null || StrUtil.isBlank(nonce.asText())) {
                 throw new EncException("nonce为空");
             }
-            SimpleDateFormat yyyyMMssHHmmss = new SimpleDateFormat("yyyyMMddHHmmss");
-            Date parse = yyyyMMssHHmmss.parse(timestamp.asText());
-            if ((parse.getTime() - System.currentTimeMillis()) > 5 * 60 * 10000) {
-                throw new EncException("timestamp错误");
-            }
             if (sign == null) {
                 throw new EncException("sign为空");
             }
+            Date parse = new SimpleDateFormat("yyyyMMddHHmmss").parse(timestamp.asText());
+            if ((parse.getTime() - System.currentTimeMillis()) > 5 * 60 * 10000) {
+                throw new EncException("timestamp有偏差");
+            }
 
-            EncryptAlogritm md5 = EncFactory.getEncryptAlogritm(EncryptAlogritmEnum.MD5);
+            EncryptAlogritm md5 = EncFactory.getEncryptAlogritm(EncEnum.MD5);
             String s = timestamp.asText() + nonce.asText() + md5.hash(key);
             log.info("originStr:" + s);
             if (!sign.equals(md5.hash(s.getBytes()))) {
                 throw new EncException("sign错误");
             }
-//            JSONObject jsonObject = JSONObject.parseObject(decryptedText);
-//            jsonObject.entrySet().stream()
-//                    .filter(e->e.getValue() != null)
-//                    .sorted((a,b )->{
-//                return a.getKey().compareTo(b.getKey());
-//            }).map(e->e.getKey() + "=" + e.getValue());
-        } catch (JsonProcessingException e) {
-            throw new EncException(e);
-        } catch (ParseException e) {
+//
+        } catch (JsonProcessingException | ParseException e) {
             throw new EncException(e);
         }
     }
@@ -139,17 +147,30 @@ public class HttpBodyEncFilter implements Filter {
 
     }
 
-    private String performDecryption(String encryptedText) throws Exception {
-        HttpEncBody httpEncBody = JSONObject.parseObject(encryptedText, HttpEncBody.class);
-//        EncryptAlogritm rsa = EncFactory.getEncryptAlogritm(EncryptAlogritmEnum.RSA);
-//        EncryptAlogritm sm4 = EncFactory.getEncryptAlogritm(EncryptAlogritmEnum.SM4_ECB);
-//        byte[] sm4Key = rsa.decryptFromBase64(new PrivateKey(encProperties.getRsaPrivateKeyHex()), httpEncBody.getEncryptKey());
-        EncryptAlogritm aes = EncFactory.getEncryptAlogritm(EncryptAlogritmEnum.AES);
-//        String sm4Key = encProperties.getSm4KeyHex();
-        String s = aes.decryptFromBase64(httpEncBody.getEncryptContent(), encProperties.getAesKey().getBytes(StandardCharsets.UTF_8), null );
-                //;sm4.decryptFromBase64(httpEncBody.getEncryptContent(),Hex.decode(sm4Key), null);
-//        checkSign(s, httpEncBody.getSignature(), sm4Key.get);
-        return s;
+    private String performDecryption(HttpEncBody httpEncBody) throws Exception {
+        String decryptText = null;
+        if (encProperties.getEncryptAlgorithm().equals(SupportEncrypt.AES)) {
+            EncryptAlogritm aes = EncFactory.getEncryptAlogritm(EncEnum.AES);
+            decryptText = aes.decryptFromBase64(httpEncBody.getEncryptContent(), encProperties.getAesKey().getBytes(StandardCharsets.UTF_8), null);
+        } else if (encProperties.getEncryptAlgorithm().equals(SupportEncrypt.RSA_AES)) {
+            EncryptAlogritm rsa = EncFactory.getEncryptAlogritm(EncEnum.RSA);
+            EncryptAlogritm aes = EncFactory.getEncryptAlogritm(EncEnum.AES);
+            byte[] key = rsa.decryptFromBase64(new PrivateKey(base64ToHex(encProperties.getRsaPrivateKeyBase64())), httpEncBody.getEncryptContent());
+            decryptText = aes.decryptFromBase64(httpEncBody.getEncryptContent(), key, null);
+        } else if (encProperties.getEncryptAlgorithm().equals(SupportEncrypt.SM4)) {
+            EncryptAlogritm aes = EncFactory.getEncryptAlogritm(EncEnum.AES);
+            decryptText = aes.decryptFromBase64(httpEncBody.getEncryptContent(), encProperties.getSm4Key().getBytes(StandardCharsets.UTF_8), null);
+        } else if (encProperties.getEncryptAlgorithm().equals(SupportEncrypt.SM2_SM4)) {
+            EncryptAlogritm sm2 = EncFactory.getEncryptAlogritm(EncEnum.SM2);
+            EncryptAlogritm sm4 = EncFactory.getEncryptAlogritm(EncEnum.SM4_ECB);
+            byte[] key = sm2.decryptFromBase64(new PrivateKey(base64ToHex(encProperties.getRsaPrivateKeyBase64())), httpEncBody.getEncryptContent());
+            decryptText = sm4.decryptFromBase64(httpEncBody.getEncryptContent(), key, null);
+        }
+        return decryptText;
+    }
+
+    private String base64ToHex(String rsaPrivateKeyBase64) {
+        return Hex.toHexString(Base64.getDecoder().decode(rsaPrivateKeyBase64));
     }
 
 
