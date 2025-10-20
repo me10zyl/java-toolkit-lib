@@ -3,11 +3,11 @@ package mytoolkit;
 
 import cn.hutool.core.util.RandomUtil;
 import com.alibaba.fastjson.JSONObject;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.util.StreamUtils;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import toolkit.enc.dto.EncEnum;
 import toolkit.enc.dto.HttpEncBody;
 import toolkit.enc.dto.PublicKey;
@@ -23,6 +23,7 @@ import java.util.*;
 
 
 @RestController
+@Slf4j
 @RequestMapping("/api/test")
 public class TestController {
     @Autowired
@@ -31,6 +32,17 @@ public class TestController {
     @GetMapping("/gen")
     public String gen() {
         return genBody();
+    }
+
+    @PostMapping("/upload")
+    public String upload(@RequestParam("file") MultipartFile multipartFile) {
+        try {
+            String s = new String(StreamUtils.copyToByteArray(multipartFile.getInputStream()), StandardCharsets.UTF_8);
+//            log.info("upload file, content: {}", s);
+            return s;
+        } catch (Exception e) {
+            return "error";
+        }
     }
 
     @RequestMapping("/echo")
