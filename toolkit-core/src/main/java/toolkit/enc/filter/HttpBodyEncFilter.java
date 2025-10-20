@@ -163,7 +163,7 @@ public class HttpBodyEncFilter implements Filter {
         } else if (encProperties.getEncryptAlgorithm().equals(SupportEncrypt.SM2_SM4)) {
             EncryptAlogritm sm2 = EncFactory.getEncryptAlogritm(EncEnum.SM2);
             EncryptAlogritm sm4 = EncFactory.getEncryptAlogritm(EncEnum.SM4_ECB);
-            byte[] key = sm2.decryptFromBase64(new PrivateKey(base64ToHex(encProperties.getRsaPrivateKeyBase64())), httpEncBody.getEncryptContent());
+            byte[] key = sm2.decryptFromBase64(new PrivateKey(encProperties.getSm2PrivateKeyHex()), httpEncBody.getEncryptContent());
             decryptText = sm4.decryptFromBase64(httpEncBody.getEncryptContent(), key, null);
         }
         return decryptText;
