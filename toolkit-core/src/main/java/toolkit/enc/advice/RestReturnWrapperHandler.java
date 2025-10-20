@@ -95,7 +95,7 @@ public class RestReturnWrapperHandler implements
         String s = aes.encryptToBase64(originStr, encProperties.getAesKey().getBytes(StandardCharsets.UTF_8), null);
         HttpEncBody encBody = new HttpEncBody();
         encBody.setEncryptContent(s);
-        return toJson(encBody);
+        return encBody;
 //        byte[] sm4Key = new byte[16];
 //        new SecureRandom().nextBytes(sm4Key);
 //        EncryptAlogritm sm4 = EncFactory.getEncryptAlogritm(EncryptAlogritmEnum.SM4_ECB);
