@@ -72,7 +72,7 @@ public class HttpBodyEncFilter implements Filter {
             decryptedText = performDecryption(encryptedText);
         } catch (Exception e) {
             // 记录错误或返回错误响应
-            throw new EncException("Decrypt request body failed", e);
+            throw new EncException(StrUtil.format("Decrypt request body failed（encryptedText:{}）", encryptedText), e);
         }
         if (encProperties.isLogDecrypt()) {
             log.info("Decrypted request body: {}", decryptedText);
