@@ -95,7 +95,7 @@ public class HttpBodyEncFilter implements Filter {
         }
 
         // 5. 创建包含解密后数据的 Request Wrapper
-        byte[] decryptedBodyBytes = decryptedText.getBytes(StandardCharsets.UTF_8);
+        byte[] decryptedBodyBytes = decryptedText == null ? new byte[0] : decryptedText.getBytes(StandardCharsets.UTF_8);
         RepeatableReadRequestWrapper wrappedRequest =
                 new RepeatableReadRequestWrapper(httpServletRequest, decryptedBodyBytes);
 
@@ -148,6 +148,9 @@ public class HttpBodyEncFilter implements Filter {
     }
 
     private String performDecryption(HttpEncBody httpEncBody) throws Exception {
+        if(httpEncBody == null){
+            return null;
+        }
         String decryptText = null;
         if (encProperties.getEncryptAlgorithm().equals(SupportEncrypt.AES)) {
             EncryptAlogritm aes = EncFactory.getEncryptAlogritm(EncEnum.AES);
