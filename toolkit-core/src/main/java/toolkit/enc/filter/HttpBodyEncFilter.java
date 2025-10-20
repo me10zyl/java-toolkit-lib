@@ -76,8 +76,8 @@ public class HttpBodyEncFilter implements Filter {
         }catch (Exception e){
 
         }
-        if(matchedExclude && (httpEncBody == null || httpEncBody.getEncryptKey() == null)){
-            log.info("matchedExclude and no EncContent, not decrypt");
+        if(matchedExclude && (httpEncBody == null || httpEncBody.getEncryptContent() == null)){
+            log.info("matchedExclude and no EncContent, not decrypt {}", httpServletRequest.getRequestURI());
             chain.doFilter(httpServletRequest, response);
             return;
         }
