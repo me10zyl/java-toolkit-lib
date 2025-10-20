@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.util.encoders.Hex;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
+import org.springframework.http.HttpMethod;
 import org.springframework.util.StreamUtils;
 import toolkit.enc.dto.*;
 import toolkit.enc.encrypts.EncryptAlogritm;
@@ -57,12 +58,16 @@ public class HttpBodyEncFilter implements Filter {
             return;
         }
 
+        boolean matchedExclude = commonUtil.excludePatternsMatched(httpServletRequest, null);
         // 2. 检查是否需要加密 (例如：只处理 POST/PUT 请求，并检查特定的 Header)
         if (!commonUtil.isDecryptionRequired(httpServletRequest, null)) {
             chain.doFilter(httpServletRequest, response);
             return;
         }
-        boolean matchedExclude = commonUtil.excludePatternsMatched(httpServletRequest, null);
+
+        if(!matchedExclude && httpServletRequest.getMethod().equals("GET")){
+            httpServletRequest.setAttribute(Constants.ATTR_NAME, true);
+        }
 
         // 3. 读取原始请求体 (只能读一次)
         byte[] encryptedBody = StreamUtils.copyToByteArray(httpServletRequest.getInputStream());
