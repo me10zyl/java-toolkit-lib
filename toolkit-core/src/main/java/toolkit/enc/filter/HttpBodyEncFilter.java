@@ -148,7 +148,7 @@ public class HttpBodyEncFilter implements Filter {
     }
 
     private String performDecryption(HttpEncBody httpEncBody) throws Exception {
-        if(httpEncBody == null){
+        if(httpEncBody == null || httpEncBody.getEncryptContent() == null){
             return null;
         }
         String decryptText = null;
