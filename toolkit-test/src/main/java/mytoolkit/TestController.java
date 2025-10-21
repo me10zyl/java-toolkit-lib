@@ -38,8 +38,8 @@ public class TestController {
     }
 
     @GetMapping("/returnString")
-    public String returnString(){
-        return "hello";
+    public String returnString(@RequestParam("param") String param){
+        return "hello," + param;
     }
 
     @GetMapping("/returnHelloDto")

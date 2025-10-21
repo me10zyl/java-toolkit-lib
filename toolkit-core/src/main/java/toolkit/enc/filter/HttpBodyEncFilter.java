@@ -104,8 +104,9 @@ public class HttpBodyEncFilter implements Filter {
             // 4. 执行解密逻辑 (此处应集成您的 SM4 解密方法)
             String decryptedText = null;
             HttpEncBody httpEncBody = null;
+            boolean isUrlEncoded = "application/x-www-form-urlencoded".equals(request.getContentType());
             try {
-                if ("application/x-www-form-urlencoded".equals(request.getContentType())) {
+                if (isUrlEncoded) {
                     httpEncBody = new HttpEncBody();
                     HttpEncBody finalHttpEncBody = httpEncBody;
                     Arrays.stream(encryptedText.split("&")).forEach(item -> {
@@ -147,7 +148,7 @@ public class HttpBodyEncFilter implements Filter {
             // 5. 创建包含解密后数据的 Request Wrapper
             byte[] decryptedBodyBytes = decryptedText == null ? new byte[0] : decryptedText.getBytes(StandardCharsets.UTF_8);
             RepeatableReadRequestWrapper wrappedRequest =
-                    new RepeatableReadRequestWrapper(httpServletRequest, decryptedBodyBytes);
+                    new RepeatableReadRequestWrapper(httpServletRequest, decryptedBodyBytes, isUrlEncoded);
 
             // 6. 将包装后的请求对象传递给后续的过滤器链和 DispatcherServlet
             wrappedRequest.setAttribute(Constants.ATTR_NAME, true);

@@ -21,11 +21,18 @@ public class RepeatableReadRequestWrapper extends HttpServletRequestWrapper {
     private final byte[] body; // 缓存解密后的请求体数据
 
     private Map<String, String[]> parameter;
+    private final boolean isUrlEncoded;//防止post取到queryString上的参数以便攻击
 
-    public RepeatableReadRequestWrapper(HttpServletRequest request, byte[] decryptedBody) {
+    public RepeatableReadRequestWrapper(HttpServletRequest request, byte[] decryptedBody, boolean isUrlEncoded) {
         super(request);
         this.body = decryptedBody;
         this.parameter = parseParameter(body);
+        this.isUrlEncoded = isUrlEncoded;
+    }
+
+    @Override
+    public String getQueryString() {
+        return isUrlEncoded ? null : super.getQueryString();
     }
 
     private Map<String, String[]> parseParameter(byte[] body) {
