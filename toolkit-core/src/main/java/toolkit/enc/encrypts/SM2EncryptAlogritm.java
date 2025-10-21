@@ -27,6 +27,9 @@ public class SM2EncryptAlogritm implements EncryptAlogritm {
 
     @Override
     public String encryptToBase64(PublicKey publicKey, byte[] data) {
+        if(data == null){
+            return null;
+        }
         return SM2Util.encrypt(SM2Util.stringToPublicKey(publicKey.getPublicKeyHex()), data);
     }
 

@@ -74,6 +74,12 @@ public class TestController {
         }
     }
 
+    //返回null
+    @GetMapping("/returnNull")
+    public String returnNull(){
+        return null;
+    }
+
     @RequestMapping("/echo")
     public String echo(HttpServletRequest request, @RequestBody(required = false) String body) {
         //打印所有参数，headers，等等

@@ -16,6 +16,9 @@ public class RSAEncryptAlogritm implements EncryptAlogritm{
 
     @Override
     public String encryptToBase64(PublicKey publicKey, byte[] data) {
+        if(data == null){
+            return null;
+        }
         try {
             return Base64.getEncoder().encodeToString(RSAUtils.encryptByPublicKey(Hex.decode(publicKey.getPublicKeyHex()), data));
         } catch (Exception e) {

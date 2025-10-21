@@ -9,6 +9,7 @@ import org.springframework.core.MethodParameter;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.http.server.ServletServerHttpRequest;
@@ -23,6 +24,7 @@ import toolkit.enc.properties.EncProperties;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
+import java.util.Objects;
 
 
 @Slf4j
@@ -54,11 +56,11 @@ public class EncryptResponseBodyAdvice implements
         if (body instanceof Resource) {
             return body;
         }
-        return encryptResponse(body, serverHttpRequest, serverHttpResponse);
+        return encryptResponse(body, serverHttpRequest, serverHttpResponse, methodParameter, httpMessageConverter);
     }
 
 
-    private Object encryptResponse(Object body, ServerHttpRequest serverHttpRequest, ServerHttpResponse serverHttpResponse) {
+    private Object encryptResponse(Object body, ServerHttpRequest serverHttpRequest, ServerHttpResponse serverHttpResponse, MethodParameter methodParameter, Class<? extends HttpMessageConverter<?>> httpMessageConverter) {
         boolean decryptionRequired = ((ServletServerHttpRequest) serverHttpRequest).getServletRequest().getAttribute(Constants.ATTR_NAME) != null;
         if (!decryptionRequired) {
             return body;
@@ -71,8 +73,15 @@ public class EncryptResponseBodyAdvice implements
             }
         }
         boolean isString = false;
-        if (body instanceof String) {
-            isString = true;
+        try {
+            if (Objects.requireNonNull(methodParameter.getMethod()).getReturnType().equals(String.class)) {
+                isString = true;
+            }
+            if(!isString){
+                isString = StringHttpMessageConverter.class.equals(httpMessageConverter);
+            }
+        }catch (Exception e){
+
         }
         String jsonString = toJson(body);
         return doEncrypt(jsonString, isString);
@@ -84,7 +93,9 @@ public class EncryptResponseBodyAdvice implements
         }
         String jsonString = null;
         try {
-            jsonString = objectMapper.writeValueAsString(body);
+            if(body != null){
+                jsonString = objectMapper.writeValueAsString(body);
+            }
         } catch (JsonProcessingException e) {
             throw new RuntimeException(e);
         }

@@ -11,6 +11,9 @@ import java.security.SecureRandom;
 public class AESEncryptAlogritm implements EncryptAlogritm {
     @Override
     public String encryptToBase64(String plainText, byte[] key, byte[] iv) {
+        if(plainText == null){
+            return null;
+        }
         return AesUtil.encrypt(plainText, key);
     }
 

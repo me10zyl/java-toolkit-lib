@@ -3,6 +3,9 @@ package toolkit.enc.encrypts;
 public class SM4CBCEncryptAlogritm implements EncryptAlogritm {
     @Override
     public String encryptToBase64(String plainText, byte[] key, byte[] iv) {
+        if(plainText == null){
+            return null;
+        }
         return SM4Util.encrypt(plainText, key, iv);
     }
 
