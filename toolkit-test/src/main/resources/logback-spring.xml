@@ -11,7 +11,7 @@
     <property name="LOG_PATTERN"
               value="${LOG_PATTERN:-%date{yyyy-MM-dd HH:mm:ss.SSS} | %X{requestURI} | %X{globalTraceId} | %-5level | [%thread] | %logger{36}:%line | %X{clientIp} | %msg%n}"/>
     <property name="CONSOLE_PATTERN"
-              value="${CONSOLE_PATTERN:-%date{yyyy-MM-dd HH:mm:ss.SSS} | %green(%X{requestURI}) | %red(%X{globalTraceId}) | %-5level | [%thread] | %logger{36}:%line | %X{userid} | %X{ip} | %msg%n}"/>
+              value="${CONSOLE_PATTERN:-%date{yyyy-MM-dd HH:mm:ss.SSS} | %green(%X{requestURI}) | %red(%X{globalTraceId}) | %-5level | [%thread] | %logger{36}:%line | %X{clientIp} | %msg%n}"/>
     <property name="P6_PATTERN"
               value="${P6_PATTERN:-%green(%X{requestURI})[%red(%X{globalTraceId})]%highlight(%msg%n)}"/>
     <logger name="org.springframework.web" level="INFO"/>
