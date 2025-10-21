@@ -14,8 +14,8 @@ public class EncProperties {
     private boolean enabled;
     private String disableHeader = "X-Disable-Encrypt";
     private boolean logDecrypt = true;
-
     private boolean checkSign = false;
+    private boolean excludeSwagger = true;
 
     private SupportEncrypt encryptAlgorithm = SupportEncrypt.AES;
 

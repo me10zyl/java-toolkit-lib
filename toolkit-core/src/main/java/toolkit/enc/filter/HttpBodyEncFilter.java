@@ -43,7 +43,26 @@ public class HttpBodyEncFilter implements Filter {
     public HttpBodyEncFilter(EncProperties encProperties, ObjectMapper objectMapper, Environment environment, String[] testEnvProfiles, String[] excludePatterns) {
         this.encProperties = encProperties;
         this.objectMapper = objectMapper;
-        this.commonUtil = new CommonUtil(encProperties, environment, excludePatterns, testEnvProfiles);
+        this.commonUtil = new CommonUtil(encProperties, environment, combineSwagger(excludePatterns, environment), testEnvProfiles);
+    }
+
+    private String[] combineSwagger(String[] excludePatterns, Environment environment) {
+        if(!encProperties.isExcludeSwagger()){
+            return excludePatterns;
+        }
+        String contextPath = environment.getProperty("server.servlet.context-path");
+        //排除swagger路径
+        if (contextPath == null) {
+            contextPath = "";
+        }
+        String[] swaggerPaths = {
+                contextPath + "/swagger-resources",
+                contextPath + "/v2/api-docs/**"
+        };
+        String[] combined = new String[excludePatterns.length + swaggerPaths.length];
+        System.arraycopy(excludePatterns, 0, combined, 0, excludePatterns.length);
+        System.arraycopy(swaggerPaths, 0, combined, excludePatterns.length, swaggerPaths.length);
+        return combined;
     }
 
     @Override
@@ -61,13 +80,12 @@ public class HttpBodyEncFilter implements Filter {
         boolean matchedExclude = commonUtil.excludePatternsMatched(httpServletRequest, null);
         // 2. 检查是否需要加密 (例如：只处理 POST/PUT 请求，并检查特定的 Header)
         if (!commonUtil.isDecryptionRequired(httpServletRequest, null)) {
-            if(!matchedExclude && httpServletRequest.getMethod().equals("GET")){
+            if (!matchedExclude && httpServletRequest.getMethod().equals("GET")) {
                 httpServletRequest.setAttribute(Constants.ATTR_NAME, true);
             }
             chain.doFilter(httpServletRequest, response);
             return;
         }
-
 
 
         // 3. 读取原始请求体 (只能读一次)
@@ -78,11 +96,11 @@ public class HttpBodyEncFilter implements Filter {
         String decryptedText = null;
         HttpEncBody httpEncBody = null;
         try {
-             httpEncBody = JSONObject.parseObject(encryptedText, HttpEncBody.class);
-        }catch (Exception e){
+            httpEncBody = JSONObject.parseObject(encryptedText, HttpEncBody.class);
+        } catch (Exception e) {
 
         }
-        if(matchedExclude && (httpEncBody == null || httpEncBody.getEncryptContent() == null)){
+        if (matchedExclude && (httpEncBody == null || httpEncBody.getEncryptContent() == null)) {
             log.info("matchedExclude and no EncContent, not decrypt {}", httpServletRequest.getRequestURI());
             chain.doFilter(httpServletRequest, response);
             return;
@@ -154,7 +172,7 @@ public class HttpBodyEncFilter implements Filter {
     }
 
     private String performDecryption(HttpEncBody httpEncBody) throws Exception {
-        if(httpEncBody == null || httpEncBody.getEncryptContent() == null){
+        if (httpEncBody == null || httpEncBody.getEncryptContent() == null) {
             return null;
         }
         String decryptText = null;

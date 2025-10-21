@@ -35,8 +35,10 @@ public class CommonUtil {
         }
         // 仅拦截 POST 和 PUT 请求
         String method = request != null ? request.getMethod() : request2.getMethodValue();
+
+        String requestURI = request != null ? request.getRequestURI() : request2.getServletRequest().getRequestURI();
         if (!"POST".equalsIgnoreCase(method) && !"PUT".equalsIgnoreCase(method)) {
-            log.info("not post or put, not encrypt");
+            log.info("method: {} requestURI: {} not post or put, no encrypt", method, requestURI);
             return false;
         }
 

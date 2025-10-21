@@ -51,8 +51,6 @@ public class EncryptResponseBodyAdvice implements
                                   Class<? extends HttpMessageConverter<?>> httpMessageConverter,
                                   ServerHttpRequest serverHttpRequest,
                                   ServerHttpResponse serverHttpResponse) {
-        // 使用 AntPathMatcher 进行模式匹配
-        //情况 文件上传下载，不需要改动，直接返回
         if (body instanceof Resource) {
             return body;
         }

@@ -5,6 +5,9 @@ import cn.hutool.core.util.RandomUtil;
 import com.alibaba.fastjson.JSONObject;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,6 +35,32 @@ public class TestController {
     @GetMapping("/gen")
     public String gen() {
         return genBody();
+    }
+
+    @GetMapping("/returnString")
+    public String returnString(){
+        return "hello";
+    }
+
+    @GetMapping("/returnHelloDto")
+    public ResponseEntity<HelloDto> returnHelloDto(){
+        HelloDto helloDto = new HelloDto();
+        helloDto.setMsg("hello");
+        return ResponseEntity.ok(helloDto);
+    }
+
+    @GetMapping("/returnHelloDto2")
+    public ResponseEntity<String> returnHelloDto2(){
+        return ResponseEntity.ok("test");
+    }
+
+    public Resource returnResource(String path){
+        return new ClassPathResource(path);
+    }
+
+    @GetMapping("/returnResource")
+    public ResponseEntity<Resource> returnResource(){
+        return ResponseEntity.ok(returnResource("/application.yml"));
     }
 
     @PostMapping("/upload")
