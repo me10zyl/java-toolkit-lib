@@ -6,5 +6,9 @@ enc:
     sm4-key-hex: 3c472f4646c0d58fe9300369f3e5b148
     aes-key: 2CEqJiBId9x5bILj
 
+spring:
+  profiles:
+    active: test
+
 knife4j:
   enable: true

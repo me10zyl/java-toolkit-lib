@@ -42,12 +42,7 @@ public class CommonUtil {
             return false;
         }
 
-        boolean isTestEnv = false;
-        if (testEnvProfiles != null && Arrays.stream(testEnvProfiles).anyMatch(profile -> {
-            return Arrays.asList(environment.getActiveProfiles()).contains(profile);
-        })) {
-            isTestEnv = true;
-        }
+        boolean isTestEnv = isIsTestEnv();
         boolean header = false;
         if (request == null) {
             header = request2.getHeaders().containsKey(encProperties.getDisableHeader());
@@ -68,6 +63,16 @@ public class CommonUtil {
         }
 
         return true; // 默认对所有 POST/PUT 请求进行处理
+    }
+
+    public boolean isIsTestEnv() {
+        boolean isTestEnv = false;
+        if (testEnvProfiles != null && Arrays.stream(testEnvProfiles).anyMatch(profile -> {
+            return Arrays.asList(environment.getActiveProfiles()).contains(profile);
+        })) {
+            isTestEnv = true;
+        }
+        return isTestEnv;
     }
 
     public boolean excludePatternsMatched(HttpServletRequest request, ServletServerHttpRequest request2) {

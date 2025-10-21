@@ -5,6 +5,8 @@ import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.util.encoders.Hex;
 import org.springframework.core.annotation.Order;
@@ -18,14 +20,17 @@ import toolkit.enc.properties.EncProperties;
 import toolkit.enc.util.CommonUtil;
 import toolkit.enc.wrapper.RepeatableReadRequestWrapper;
 import toolkit.enc.exception.EncException;
+import toolkit.utils.StackTraceUtil;
 
 import javax.servlet.*;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Date;
 
@@ -68,64 +73,104 @@ public class HttpBodyEncFilter implements Filter {
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
+        try {
 
-        // 1. 检查并转换请求对象
-        HttpServletRequest httpServletRequest = (HttpServletRequest) request;
-        if (request.getContentType() != null && request.getContentType().contains(
-                "multipart/form-data")) {
-            chain.doFilter(request, response);
-            return;
-        }
-
-        boolean matchedExclude = commonUtil.excludePatternsMatched(httpServletRequest, null);
-        // 2. 检查是否需要加密 (例如：只处理 POST/PUT 请求，并检查特定的 Header)
-        if (!commonUtil.isDecryptionRequired(httpServletRequest, null)) {
-            if (!matchedExclude && httpServletRequest.getMethod().equals("GET")) {
-                httpServletRequest.setAttribute(Constants.ATTR_NAME, true);
+            // 1. 检查并转换请求对象
+            HttpServletRequest httpServletRequest = (HttpServletRequest) request;
+            if (request.getContentType() != null && request.getContentType().contains(
+                    "multipart/form-data")) {
+                chain.doFilter(request, response);
+                return;
             }
-            chain.doFilter(httpServletRequest, response);
-            return;
-        }
+
+            boolean matchedExclude = commonUtil.excludePatternsMatched(httpServletRequest, null);
+            // 2. 检查是否需要加密 (例如：只处理 POST/PUT 请求，并检查特定的 Header)
+            if (!commonUtil.isDecryptionRequired(httpServletRequest, null)) {
+                if (!matchedExclude && httpServletRequest.getMethod().equals("GET")) {
+                    httpServletRequest.setAttribute(Constants.ATTR_NAME, true);
+                }
+                chain.doFilter(httpServletRequest, response);
+                return;
+            }
 
 
-        // 3. 读取原始请求体 (只能读一次)
-        byte[] encryptedBody = StreamUtils.copyToByteArray(httpServletRequest.getInputStream());
-        String encryptedText = new String(encryptedBody, StandardCharsets.UTF_8);
+            // 3. 读取原始请求体 (只能读一次)
+            byte[] encryptedBody = StreamUtils.copyToByteArray(httpServletRequest.getInputStream());
+            String encryptedText = new String(encryptedBody, StandardCharsets.UTF_8);
 
-        // 4. 执行解密逻辑 (此处应集成您的 SM4 解密方法)
-        String decryptedText = null;
-        HttpEncBody httpEncBody = null;
-        try {
-            httpEncBody = JSONObject.parseObject(encryptedText, HttpEncBody.class);
-        } catch (Exception e) {
+            // 4. 执行解密逻辑 (此处应集成您的 SM4 解密方法)
+            String decryptedText = null;
+            HttpEncBody httpEncBody = null;
+            try {
+                httpEncBody = JSONObject.parseObject(encryptedText, HttpEncBody.class);
+            } catch (Exception e) {
 
+            }
+            if (matchedExclude && (httpEncBody == null || httpEncBody.getEncryptContent() == null)) {
+                log.info("matchedExclude and no EncContent, not decrypt {}", httpServletRequest.getRequestURI());
+                chain.doFilter(httpServletRequest, response);
+                return;
+            }
+            try {
+                decryptedText = performDecryption(httpEncBody);
+            } catch (Exception e) {
+                // 记录错误或返回错误响应
+                throw new EncException(StrUtil.format("Decrypt request body failed（encryptedText:{}）", encryptedText), e);
+            }
+            if (encProperties.isLogDecrypt()) {
+                log.info("Decrypted request body: {}", decryptedText);
+            }
+            if (encProperties.isCheckSign()) {
+                checkSign(decryptedText, httpEncBody.getSignature(), encProperties.getAesKey().getBytes(StandardCharsets.UTF_8));
+            }
+
+            // 5. 创建包含解密后数据的 Request Wrapper
+            byte[] decryptedBodyBytes = decryptedText == null ? new byte[0] : decryptedText.getBytes(StandardCharsets.UTF_8);
+            RepeatableReadRequestWrapper wrappedRequest =
+                    new RepeatableReadRequestWrapper(httpServletRequest, decryptedBodyBytes);
+
+            // 6. 将包装后的请求对象传递给后续的过滤器链和 DispatcherServlet
+            wrappedRequest.setAttribute(Constants.ATTR_NAME, true);
+            chain.doFilter(wrappedRequest, response);
+        }catch (EncException e){
+            log.error("加密异常: {}", e.getMessage(), e);
+            handleException((HttpServletResponse) response, e);
         }
-        if (matchedExclude && (httpEncBody == null || httpEncBody.getEncryptContent() == null)) {
-            log.info("matchedExclude and no EncContent, not decrypt {}", httpServletRequest.getRequestURI());
-            chain.doFilter(httpServletRequest, response);
-            return;
-        }
-        try {
-            decryptedText = performDecryption(httpEncBody);
-        } catch (Exception e) {
-            // 记录错误或返回错误响应
-            throw new EncException(StrUtil.format("Decrypt request body failed（encryptedText:{}）", encryptedText), e);
-        }
-        if (encProperties.isLogDecrypt()) {
-            log.info("Decrypted request body: {}", decryptedText);
-        }
-        if (encProperties.isCheckSign()) {
-            checkSign(decryptedText, httpEncBody.getSignature(), encProperties.getAesKey().getBytes(StandardCharsets.UTF_8));
+    }
+
+    private void handleException(HttpServletResponse response, EncException e)  {
+        if(commonUtil.isIsTestEnv()){
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            response.setContentType("application/json;charset=UTF-8");
+
+            ErrorResponse errorResponse = new ErrorResponse();
+            errorResponse.setCode(e instanceof EncException ? "ENC_ERROR" : "FILTER_ERROR");
+            errorResponse.setMessage(e.getMessage());
+            errorResponse.setStackTrace(StackTraceUtil.getStackTrace(e));
+            errorResponse.setTimestamp(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date()).replace(" ", "T"));
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            objectMapper.registerModule(new JavaTimeModule());
+            try {
+                String json = objectMapper.writeValueAsString(errorResponse);
+
+                response.getWriter().write(json);
+                response.getWriter().flush();
+            }catch (Exception ex){
+                log.error("write errorResponse failed: {}", ex.getMessage(), ex);
+            }
+        }else{
+            throw e;
         }
 
-        // 5. 创建包含解密后数据的 Request Wrapper
-        byte[] decryptedBodyBytes = decryptedText == null ? new byte[0] : decryptedText.getBytes(StandardCharsets.UTF_8);
-        RepeatableReadRequestWrapper wrappedRequest =
-                new RepeatableReadRequestWrapper(httpServletRequest, decryptedBodyBytes);
+    }
 
-        // 6. 将包装后的请求对象传递给后续的过滤器链和 DispatcherServlet
-        wrappedRequest.setAttribute(Constants.ATTR_NAME, true);
-        chain.doFilter(wrappedRequest, response);
+    @Data
+    static class ErrorResponse {
+        private String code;
+        private String message;
+        private String timestamp;
+        private String stackTrace;
     }
 
     private void checkSign(String decryptedText, String sign, byte[] key) {
