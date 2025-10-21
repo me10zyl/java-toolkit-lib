@@ -16,4 +16,8 @@ public class MDCUtil {
     public static String getMDCGlobalTraceId(){
         return MDC.get(Constants.MDC_GLOBAL_TRACE_ID);
     }
+
+    public static void removeMDCGlobalTraceId() {
+        MDC.remove(Constants.MDC_GLOBAL_TRACE_ID);
+    }
 }

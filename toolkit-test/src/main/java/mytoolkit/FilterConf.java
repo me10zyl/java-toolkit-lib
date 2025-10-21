@@ -27,7 +27,7 @@ public class FilterConf {
     @Bean
     public FilterRegistrationBean<HttpBodyEncFilter> decryptionFilter(EncProperties encProperties, ObjectMapper objectMapper, Environment environment) {
         FilterRegistrationBean<HttpBodyEncFilter> filter = new FilterRegistrationBean<>(new HttpBodyEncFilter(encProperties, objectMapper, environment, new String[]{"test", "dev", "fat"}, excludePatterns), new ServletRegistrationBean[0]);
-        filter.setOrder(0);
+        filter.setOrder(1);
         return filter;
     }
 }

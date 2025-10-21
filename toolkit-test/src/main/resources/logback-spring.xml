@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <springProperty scope="context" name="LOG_PATH" source="logging.file.path"/>
+    <springProperty scope="context" name="LOG_FILE_NAME" source="logging.file.name"/>
+    <!--默认使用catalina-->
+    <property name="LOG_FILE_NAME" value="${LOG_FILE_NAME:-startlog}"/>
+    <!--默认当前项目的logs目录-->
+    <property name="LOG_PATH" value="${LOG_PATH:-./logs}"/>
+    <property name="MAX_FILE_SIZE" value="${MAX_FILE_SIZE:-10MB}"/>
+    <property name="MAX_HISTORY" value="${MAX_HISTORY:-30}"/>
+    <property name="LOG_PATTERN"
+              value="${LOG_PATTERN:-%date{yyyy-MM-dd HH:mm:ss.SSS} | %X{requestURI} | %X{globalTraceId} | %-5level | [%thread] | %logger{36}:%line | %X{clientIp} | %msg%n}"/>
+    <property name="CONSOLE_PATTERN"
+              value="${CONSOLE_PATTERN:-%date{yyyy-MM-dd HH:mm:ss.SSS} | %green(%X{requestURI}) | %red(%X{globalTraceId}) | %-5level | [%thread] | %logger{36}:%line | %X{userid} | %X{ip} | %msg%n}"/>
+    <property name="P6_PATTERN"
+              value="${P6_PATTERN:-%green(%X{requestURI})[%red(%X{globalTraceId})]%highlight(%msg%n)}"/>
+    <logger name="org.springframework.web" level="INFO"/>
+    <!-- 彩色日志 -->
+    <conversionRule conversionWord="clr" converterClass="org.springframework.boot.logging.logback.ColorConverter" />
+    <conversionRule conversionWord="wex" converterClass="org.springframework.boot.logging.logback.WhitespaceThrowableProxyConverter" />
+    <conversionRule conversionWord="wEx" converterClass="org.springframework.boot.logging.logback.ExtendedWhitespaceThrowableProxyConverter" />
+    <!-- 解决SpringBootAdmin错误日志问题 -->
+    <logger name="org.apache.catalina.connector.CoyoteAdapter" level="OFF"/>
+
+
+    <!-- 控制台 -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${CONSOLE_PATTERN}</pattern>
+        </encoder>
+    </appender>
+    <appender name="P6CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>${P6_PATTERN}</pattern>
+        </encoder>
+    </appender>
+
+
+    <!-- 注意这里一定要放到springProfile里, 否则在你本机执行的时候还是会去找相应的文件 -->
+    <!-- 每天滚动记录日志文件 -->
+    <appender name="rollingFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- 文件名为 catalina.log -->
+        <file>${LOG_PATH}/${LOG_FILE_NAME}.log</file>
+        <springProfile name="pro">
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <!-- 前一天日志进行 zip 压缩 -->
+                <fileNamePattern>${LOG_PATH}/${LOG_FILE_NAME}-%d{yyyy-MM-dd}.zip</fileNamePattern>
+                <!-- 最多保留 15 天的日志 -->
+                <maxHistory>${MAX_HISTORY}</maxHistory>
+                <!-- each file should be at most 10MB, keep 30 days worth of history,
+                    but at most 3GB -->
+                <!--日志文件最大的大小-->
+<!--                <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>-->
+            </rollingPolicy>
+        </springProfile>
+        <springProfile name="!pro">
+            <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+                <!-- 前一天日志进行 zip 压缩 -->
+                <fileNamePattern>${LOG_PATH}/${LOG_FILE_NAME}-%d{yyyy-MM-dd}.log</fileNamePattern>
+                <!-- 最多保留 15 天的日志 -->
+                <maxHistory>${MAX_HISTORY}</maxHistory>
+            </rollingPolicy>
+        </springProfile>
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+        <append>true</append>
+        <prudent>false</prudent>
+    </appender>
+    <appender name="rollingErrorFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- 文件名为 catalina.log -->
+        <file>${LOG_PATH}/${LOG_FILE_NAME}-error.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <!-- 前一天日志进行 zip 压缩 -->
+            <fileNamePattern>${LOG_PATH}/${LOG_FILE_NAME}-%d{yyyy-MM-dd}-error.zip</fileNamePattern>
+            <!-- 最多保留 15 天的日志 -->
+            <maxHistory>${MAX_HISTORY}</maxHistory>
+            <!-- each file should be at most 10MB, keep 30 days worth of history,
+				but at most 3GB -->
+            <!--日志文件最大的大小-->
+        </rollingPolicy>
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+        <append>true</append>
+        <prudent>false</prudent>
+        <filter class="ch.qos.logback.classic.filter.LevelFilter">
+            <level>ERROR</level>
+            <onMatch>ACCEPT</onMatch>
+            <onMismatch>DENY</onMismatch>
+        </filter>
+    </appender>
+    <!--sql日志-->
+    <appender name="rollingSqlFile" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <!-- 文件名为 catalina.log -->
+        <file>${LOG_PATH}/spy-sql.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- 前一天日志进行 zip 压缩 -->
+            <fileNamePattern>${LOG_PATH}/spy-sql-%d{yyyy-MM-dd}.%i.zip</fileNamePattern>
+            <!-- 最多保留 15 天的日志 -->
+            <maxHistory>${MAX_HISTORY}</maxHistory>
+            <!-- each file should be at most 10MB, keep 30 days worth of history,
+				but at most 3GB -->
+            <!--日志文件最大的大小-->
+            <maxFileSize>${MAX_FILE_SIZE}</maxFileSize>
+        </rollingPolicy>
+        <encoder>
+            <pattern>${LOG_PATTERN}</pattern>
+        </encoder>
+        <append>true</append>
+        <prudent>false</prudent>
+    </appender>
+
+    <appender name="asyncFileAppender" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>1024</queueSize>
+        <appender-ref ref="rollingFile"/>
+    </appender>
+    <appender name="asyncErrorFileAppender" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>1024</queueSize>
+        <appender-ref ref="rollingErrorFile"/>
+    </appender>
+    <appender name="asyncSqlFileAppender" class="ch.qos.logback.classic.AsyncAppender">
+        <discardingThreshold>0</discardingThreshold>
+        <queueSize>1024</queueSize>
+        <appender-ref ref="rollingSqlFile"/>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="asyncFileAppender"/>
+        <appender-ref ref="asyncErrorFileAppender"/>
+    </root>
+    <!--p6spy日志单独输出-->
+    <logger name="p6spy" level="INFO" additivity="false">
+        <appender-ref ref="P6CONSOLE" />
+        <appender-ref ref="asyncFileAppender"/>
+    </logger>
+
+    <!-- 事务日志 -->
+    <logger name="org.springframework.jdbc.datasource.DataSourceTransactionManager" level="ERROR"/>
+    <logger name="org.mybatis.spring.SqlSessionUtils" level="ERROR"/>
+    <logger name="org.mybatis.spring.transaction.SpringManagedTransaction" level="ERROR" />
+    <logger name="com.qxnw.eqmall.dao.MallInfoMapper" level="ERROR" />
+    <logger name="com.qxnw.eqmall.dao.UserInfoMapper" level="ERROR" />
+</configuration>
