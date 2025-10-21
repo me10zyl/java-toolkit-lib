@@ -26,7 +26,9 @@ public class RepeatableReadRequestWrapper extends HttpServletRequestWrapper {
     public RepeatableReadRequestWrapper(HttpServletRequest request, byte[] decryptedBody, boolean isUrlEncoded) {
         super(request);
         this.body = decryptedBody;
-        this.parameter = parseParameter(body);
+        if(isUrlEncoded) {
+            this.parameter = parseParameter(body);
+        }
         this.isUrlEncoded = isUrlEncoded;
     }
 
@@ -98,22 +100,34 @@ public class RepeatableReadRequestWrapper extends HttpServletRequestWrapper {
 
     @Override
     public Map<String, String[]> getParameterMap() {
+        if(!isUrlEncoded){
+            return super.getParameterMap();
+        }
         return parameter;
     }
 
     @Override
     public String getParameter(String name) {
+        if(!isUrlEncoded){
+            return super.getParameter(name);
+        }
         String[] values = parameter.get(name);
         return (values != null && values.length > 0) ? values[0] : null;
     }
 
     @Override
     public Enumeration<String> getParameterNames() {
+        if(!isUrlEncoded){
+            return super.getParameterNames();
+        }
         return Collections.enumeration(parameter.keySet());
     }
 
     @Override
     public String[] getParameterValues(String name) {
+        if(!isUrlEncoded){
+            return super.getParameterValues(name);
+        }
         return parameter.get(name);
     }
 

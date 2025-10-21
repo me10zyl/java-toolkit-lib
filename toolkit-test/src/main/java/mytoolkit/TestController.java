@@ -3,6 +3,10 @@ package mytoolkit;
 
 import cn.hutool.core.util.RandomUtil;
 import com.alibaba.fastjson.JSONObject;
+import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
@@ -40,6 +44,12 @@ public class TestController {
     @GetMapping("/returnString")
     public String returnString(@RequestParam("param") String param){
         return "hello," + param;
+    }
+
+    @ApiOperation("购物车分页列表")
+    @PostMapping("/pageCart")
+    public String pageCart(@ApiParam @RequestBody(required = false) HelloDto page, @RequestParam Integer goodsType,@RequestParam Integer isIntegralAvailable){
+        return "hello," + page.getMsg() + goodsType + isIntegralAvailable;
     }
 
     @GetMapping("/returnHelloDto")

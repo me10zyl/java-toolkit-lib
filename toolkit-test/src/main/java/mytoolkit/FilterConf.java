@@ -13,7 +13,9 @@ import toolkit.enc.advice.EncryptResponseBodyAdvice;
 @Configuration
 public class FilterConf {
 
-    private final String[] excludePatterns = {};
+    private final String[] excludePatterns = {
+            "/api/test/gen",
+    };
     @Bean
     public EncryptResponseBodyAdvice restReturnWrapperHandler(EncProperties encProperties, ObjectMapper objectMapper) {
         return new EncryptResponseBodyAdvice(encProperties, objectMapper);
