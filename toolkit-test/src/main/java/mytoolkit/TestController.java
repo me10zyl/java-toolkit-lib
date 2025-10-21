@@ -74,6 +74,11 @@ public class TestController {
         }
     }
 
+    @PostMapping("/testUrlencoded")
+    public String testUrlencoded(@RequestParam("param") String param, @RequestParam("param2") String param2){
+        return param + param2;
+    }
+
     //返回null
     @GetMapping("/returnNull")
     public String returnNull(){

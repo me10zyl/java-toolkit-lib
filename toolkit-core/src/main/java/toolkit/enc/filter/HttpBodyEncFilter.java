@@ -27,10 +27,13 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
 
@@ -52,7 +55,7 @@ public class HttpBodyEncFilter implements Filter {
     }
 
     private String[] combineSwagger(String[] excludePatterns, Environment environment) {
-        if(!encProperties.isExcludeSwagger()){
+        if (!encProperties.isExcludeSwagger()) {
             return excludePatterns;
         }
         String contextPath = environment.getProperty("server.servlet.context-path");
@@ -102,7 +105,24 @@ public class HttpBodyEncFilter implements Filter {
             String decryptedText = null;
             HttpEncBody httpEncBody = null;
             try {
-                httpEncBody = JSONObject.parseObject(encryptedText, HttpEncBody.class);
+                if ("application/x-www-form-urlencoded".equals(request.getContentType())) {
+                    httpEncBody = new HttpEncBody();
+                    HttpEncBody finalHttpEncBody = httpEncBody;
+                    Arrays.stream(encryptedText.split("&")).forEach(item -> {
+                        String[] keyValue = item.split("=");
+                        if (keyValue.length == 2) {
+                            if ("encryptContent".equals(keyValue[0])) {
+                                finalHttpEncBody.setEncryptContent(decodeUrl(keyValue[1]));
+                            } else if ("encryptKey".equals(keyValue[0])) {
+                                finalHttpEncBody.setEncryptKey(decodeUrl(keyValue[1]));
+                            } else if ("signature".equals(keyValue[0])) {
+                                finalHttpEncBody.setSignature(decodeUrl(keyValue[1]));
+                            }
+                        }
+                    });
+                } else {
+                    httpEncBody = JSONObject.parseObject(encryptedText, HttpEncBody.class);
+                }
             } catch (Exception e) {
 
             }
@@ -132,14 +152,22 @@ public class HttpBodyEncFilter implements Filter {
             // 6. 将包装后的请求对象传递给后续的过滤器链和 DispatcherServlet
             wrappedRequest.setAttribute(Constants.ATTR_NAME, true);
             chain.doFilter(wrappedRequest, response);
-        }catch (EncException e){
+        } catch (EncException e) {
             log.error("加密异常: {}", e.getMessage(), e);
             handleException((HttpServletResponse) response, e);
         }
     }
 
-    private void handleException(HttpServletResponse response, EncException e)  {
-        if(commonUtil.isIsTestEnv()){
+    private String decodeUrl(String s) {
+        try {
+            return URLDecoder.decode(s, StandardCharsets.UTF_8.name());
+        } catch (UnsupportedEncodingException e) {
+            throw new EncException(e);
+        }
+    }
+
+    private void handleException(HttpServletResponse response, EncException e) {
+        if (commonUtil.isIsTestEnv()) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             response.setContentType("application/json;charset=UTF-8");
 
@@ -156,10 +184,10 @@ public class HttpBodyEncFilter implements Filter {
 
                 response.getWriter().write(json);
                 response.getWriter().flush();
-            }catch (Exception ex){
+            } catch (Exception ex) {
                 log.error("write errorResponse failed: {}", ex.getMessage(), ex);
             }
-        }else{
+        } else {
             throw e;
         }
 
