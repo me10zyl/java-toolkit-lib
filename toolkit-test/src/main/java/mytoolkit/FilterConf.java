@@ -15,6 +15,7 @@ public class FilterConf {
 
     private final String[] excludePatterns = {
             "/api/test/gen",
+            "/api/test/testLimit"
     };
     @Bean
     public EncryptResponseBodyAdvice restReturnWrapperHandler(EncProperties encProperties, ObjectMapper objectMapper) {

@@ -46,6 +46,11 @@ public class TestController {
         return "hello," + param;
     }
 
+    @GetMapping("/testLimit")
+    public String testLimt(){
+        return "hello, testLimit";
+    }
+
     @ApiOperation("购物车分页列表")
     @PostMapping("/pageCart")
     public String pageCart(@ApiParam @RequestBody(required = false) HelloDto page, @RequestParam Integer goodsType,@RequestParam Integer isIntegralAvailable){

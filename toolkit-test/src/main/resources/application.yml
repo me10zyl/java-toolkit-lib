@@ -10,5 +10,28 @@ spring:
   profiles:
     active: test
 
+  redis:
+    client-name: scyc-user
+    cluster:
+      nodes:
+        - 192.168.0.114:6379
+      max-redirects: 0
+    lettuce:
+      cluster:
+        refresh:
+          adaptive: true
+          period: 5s
+      pool:
+        ##连接池最大连接数（使用负值表示没有限制） 默认8
+        max-active: 100
+        ## 连接池中的最大空闲连接 默认8
+        max-idle: 8
+        ## 连接池中的最小空闲连接 默认0
+        min-idle: 2
+        ## 连接池最大阻塞等待时间（使用负值表示没有限制） 默认 -1
+        max-wait: -1
+        # 连接超时时间（毫秒）
+        timeout: 3000
+
 knife4j:
   enable: true
