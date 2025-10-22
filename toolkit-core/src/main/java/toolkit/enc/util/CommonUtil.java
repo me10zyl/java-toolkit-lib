@@ -42,6 +42,12 @@ public class CommonUtil {
             return false;
         }
 
+        if (hasDisableHeader(request, request2)) return false;
+
+        return true; // 默认对所有 POST/PUT 请求进行处理
+    }
+
+    private boolean hasDisableHeader(HttpServletRequest request, ServletServerHttpRequest request2) {
         boolean isTestEnv = isIsTestEnv();
         boolean header = false;
         if (request == null) {
@@ -59,10 +65,9 @@ public class CommonUtil {
 
         if (isTestEnv && header) {
             log.info("Disable encrypt for test request, not encrypt");
-            return false;
+            return true;
         }
-
-        return true; // 默认对所有 POST/PUT 请求进行处理
+        return false;
     }
 
     public boolean isIsTestEnv() {

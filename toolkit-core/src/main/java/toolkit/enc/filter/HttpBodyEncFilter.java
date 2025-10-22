@@ -129,7 +129,7 @@ public class HttpBodyEncFilter implements Filter {
             }
             if (matchedExclude && (httpEncBody == null || httpEncBody.getEncryptContent() == null)) {
                 log.info("matchedExclude and no EncContent, not decrypt {}", httpServletRequest.getRequestURI());
-                chain.doFilter(httpServletRequest, response);
+                chain.doFilter(new RepeatableReadRequestWrapper(httpServletRequest, encryptedBody, false), response);
                 return;
             }
             try {
