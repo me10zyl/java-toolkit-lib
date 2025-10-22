@@ -4,12 +4,27 @@ package toolkit.requestlimiter;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.distributed.proxy.ProxyManager;
+import io.github.bucket4j.distributed.serialization.Mapper;
+import io.github.bucket4j.redis.redisson.cas.RedissonBasedProxyManager;
+import lombok.RequiredArgsConstructor;
+import org.redisson.Redisson;
+import org.redisson.api.RedissonClient;
+import org.redisson.config.Config;
+import org.redisson.config.SingleServerConfig;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
+import org.springframework.data.redis.connection.RedisClusterConnection;
+import org.springframework.data.redis.connection.RedisClusterNode;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 import toolkit.requestlimiter.anno.RateLimit;
 import toolkit.requestlimiter.properties.RateLimitProperties;
 import toolkit.utils.IpUtil;
+import toolkit.utils.TimeUnitConverter;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
@@ -19,15 +34,46 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
-@Component
+
+@RequiredArgsConstructor
 public class RequestLimiterInterceptor implements HandlerInterceptor {
 
-    @Resource
-    private ProxyManager<byte[]> proxyManager;
-
-    @Resource
-    private RateLimitProperties rateLimitProperties;
+    private final ProxyManager<byte[]> proxyManager;
+    private final RateLimitProperties rateLimitProperties;
     private BucketConfiguration limit;
+
+    @ConditionalOnMissingBean(ProxyManager.class)
+    @Bean
+    public ProxyManager<byte[]> proxyManager(RedissonClient redissonClient) {
+        return RedissonBasedProxyManager.builderFor(((Redisson) redissonClient).getCommandExecutor())
+                .withKeyMapper(Mapper.BYTES).build();
+    }
+
+    // 1. 配置 Redisson 客户端
+    @ConditionalOnMissingBean(RedissonClient.class)
+    @Bean
+    public RedissonClient getRedissonClient(RedisConnectionFactory redisConnectionFactory) {
+        Config config = new Config();
+        try {
+            RedisClusterConnection clusterConnection = redisConnectionFactory.getClusterConnection();
+            boolean isCluster = false;
+            if(clusterConnection != null) {
+                for (RedisClusterNode clusterGetNode : clusterConnection.clusterGetNodes()) {
+                    config.useClusterServers().addNodeAddress("redis://" + clusterGetNode.toString());
+                }
+            }
+        }catch (InvalidDataAccessApiUsageException exception){
+            LettuceConnectionFactory factory = (LettuceConnectionFactory) redisConnectionFactory;
+            String redisURI =  //factory.getHostName()
+                    "redis://" + factory.getHostName() + ":" + factory.getPort();
+            //ReflectUtil.getFieldValue((ReflectUtil.getFieldValue((LettuceConnectionFactory) redisConnectionFactory, "client")), "redisURI").toString();
+            SingleServerConfig singleServerConfig = config.useSingleServer();
+            singleServerConfig.setAddress(redisURI);
+            singleServerConfig.setDatabase(factory.getDatabase());
+            singleServerConfig.setPassword(factory.getPassword());
+        }
+        return Redisson.create(config);
+    }
 
     @PostConstruct
     private void initLimit(){
@@ -60,20 +106,20 @@ public class RequestLimiterInterceptor implements HandlerInterceptor {
         // 从代理管理器中获取或创建一个令牌桶
         Bucket bucket = null;
         if(annotation == null){
-//            bucket = proxyManager.getProxy(key.getBytes(StandardCharsets.UTF_8), () -> {
-//                return limit;
-//            });
+            bucket = proxyManager.builder().build(key.getBytes(StandardCharsets.UTF_8), () -> {
+                return limit;
+            });
         }
         else {
             // 方法上添加了 @RateLimit 注解，检查是否需要限流
             if(annotation.capacity() > 0 && annotation.refillTokens() > 0 && annotation.refillDuration() > 0) {
                 // 从代理管理器中获取或创建一个令牌桶
-//                 bucket = proxyManager.getProxy(key.getBytes(StandardCharsets.UTF_8), () -> {
-//                    return BucketConfiguration.builder()
-//                            .addLimit(limit ->
-//                                    limit.capacity(annotation.capacity()).refillGreedy(annotation.refillTokens(), Duration.of(annotation.refillDuration(), annotation.refillDurationUnit().toChronoUnit())))
-//                            .build();
-//                });
+                 bucket = proxyManager.builder().build(key.getBytes(StandardCharsets.UTF_8), () -> {
+                    return BucketConfiguration.builder()
+                            .addLimit(limit ->
+                                    limit.capacity(annotation.capacity()).refillGreedy(annotation.refillTokens(), Duration.of(annotation.refillDuration(), TimeUnitConverter.toTemporalUnit(annotation.refillDurationUnit()))))
+                            .build();
+                });
             }
         }
 
