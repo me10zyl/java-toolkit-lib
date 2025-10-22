@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.util.encoders.Hex;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
-import org.springframework.http.HttpMethod;
 import org.springframework.util.StreamUtils;
 import toolkit.enc.dto.*;
 import toolkit.enc.encrypts.EncryptAlogritm;
@@ -32,7 +31,6 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
@@ -89,7 +87,8 @@ public class HttpBodyEncFilter implements Filter {
             boolean matchedExclude = commonUtil.excludePatternsMatched(httpServletRequest, null);
             // 2. 检查是否需要加密 (例如：只处理 POST/PUT 请求，并检查特定的 Header)
             if (!commonUtil.isDecryptionRequired(httpServletRequest, null)) {
-                if (!matchedExclude && httpServletRequest.getMethod().equals("GET")) {
+                if (!matchedExclude && httpServletRequest.getMethod().equals("GET")
+                && !commonUtil.hasDisableHeader(httpServletRequest, null) && !commonUtil.disableProperties()) {
                     httpServletRequest.setAttribute(Constants.ATTR_NAME, true);
                 }
                 chain.doFilter(httpServletRequest, response);

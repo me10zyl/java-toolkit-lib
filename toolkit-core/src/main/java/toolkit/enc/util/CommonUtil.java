@@ -1,13 +1,9 @@
 package toolkit.enc.util;
 
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
-import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServletServerHttpRequest;
-import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
-import toolkit.enc.dto.Constants;
 import toolkit.enc.properties.EncProperties;
 
 import javax.servlet.http.HttpServletRequest;
@@ -22,6 +18,7 @@ public class CommonUtil {
     private final String[] excludePatterns;
     private final String[] testEnvProfiles;
 
+
     public CommonUtil(EncProperties encProperties, Environment environment, String[] excludePatterns, String[] testEnvProfiles) {
         this.encProperties = encProperties;
         this.environment = environment;
@@ -30,24 +27,34 @@ public class CommonUtil {
     }
 
     public boolean isDecryptionRequired(HttpServletRequest request, ServletServerHttpRequest request2) {
-        if (!encProperties.isEnabled()) {
-            return false;
-        }
+        if (disableProperties()) return false;
         // 仅拦截 POST 和 PUT 请求
-        String method = request != null ? request.getMethod() : request2.getMethodValue();
-
-        String requestURI = request != null ? request.getRequestURI() : request2.getServletRequest().getRequestURI();
-        if (!"POST".equalsIgnoreCase(method) && !"PUT".equalsIgnoreCase(method)) {
-            log.info("method: {} requestURI: {} not post or put, no encrypt", method, requestURI);
-            return false;
-        }
+        if (notPost(request, request2)) return false;
 
         if (hasDisableHeader(request, request2)) return false;
 
         return true; // 默认对所有 POST/PUT 请求进行处理
     }
 
-    private boolean hasDisableHeader(HttpServletRequest request, ServletServerHttpRequest request2) {
+    public  boolean notPost(HttpServletRequest request, ServletServerHttpRequest request2) {
+        String method = request != null ? request.getMethod() : request2.getMethodValue();
+
+        String requestURI = request != null ? request.getRequestURI() : request2.getServletRequest().getRequestURI();
+        if (!"POST".equalsIgnoreCase(method) && !"PUT".equalsIgnoreCase(method)) {
+            log.info("method: {} requestURI: {} not post or put, no encrypt", method, requestURI);
+            return true;
+        }
+        return false;
+    }
+
+    public boolean disableProperties() {
+        if (!encProperties.isEnabled()) {
+            return true;
+        }
+        return false;
+    }
+
+    public boolean hasDisableHeader(HttpServletRequest request, ServletServerHttpRequest request2) {
         boolean isTestEnv = isIsTestEnv();
         boolean header = false;
         if (request == null) {
@@ -56,7 +63,7 @@ public class CommonUtil {
             Enumeration<String> headerNames = request.getHeaderNames();
             while (headerNames.hasMoreElements()) {
                 String next = headerNames.nextElement();
-                if (next.equals(encProperties.getDisableHeader())) {
+                if (next.equalsIgnoreCase(encProperties.getDisableHeader())) {
                     header = true;
                     break;
                 }
