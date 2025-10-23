@@ -35,54 +35,22 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 
 
-@RequiredArgsConstructor
 public class RequestLimiterInterceptor implements HandlerInterceptor {
 
     private final ProxyManager<byte[]> proxyManager;
     private final RateLimitProperties rateLimitProperties;
-    private BucketConfiguration limit;
+    private final BucketConfiguration limit;
 
-    @ConditionalOnMissingBean(ProxyManager.class)
-    @Bean
-    public ProxyManager<byte[]> proxyManager(RedissonClient redissonClient) {
-        return RedissonBasedProxyManager.builderFor(((Redisson) redissonClient).getCommandExecutor())
-                .withKeyMapper(Mapper.BYTES).build();
-    }
-
-    // 1. 配置 Redisson 客户端
-    @ConditionalOnMissingBean(RedissonClient.class)
-    @Bean
-    public RedissonClient getRedissonClient(RedisConnectionFactory redisConnectionFactory) {
-        Config config = new Config();
-        try {
-            RedisClusterConnection clusterConnection = redisConnectionFactory.getClusterConnection();
-            boolean isCluster = false;
-            if(clusterConnection != null) {
-                for (RedisClusterNode clusterGetNode : clusterConnection.clusterGetNodes()) {
-                    config.useClusterServers().addNodeAddress("redis://" + clusterGetNode.toString());
-                }
-            }
-        }catch (InvalidDataAccessApiUsageException exception){
-            LettuceConnectionFactory factory = (LettuceConnectionFactory) redisConnectionFactory;
-            String redisURI =  //factory.getHostName()
-                    "redis://" + factory.getHostName() + ":" + factory.getPort();
-            //ReflectUtil.getFieldValue((ReflectUtil.getFieldValue((LettuceConnectionFactory) redisConnectionFactory, "client")), "redisURI").toString();
-            SingleServerConfig singleServerConfig = config.useSingleServer();
-            singleServerConfig.setAddress(redisURI);
-            singleServerConfig.setDatabase(factory.getDatabase());
-            singleServerConfig.setPassword(factory.getPassword());
-        }
-        return Redisson.create(config);
-    }
-
-    @PostConstruct
-    private void initLimit(){
-         limit =
+    public RequestLimiterInterceptor(ProxyManager<byte[]> proxyManager, RateLimitProperties rateLimitProperties) {
+        this.proxyManager = proxyManager;
+        this.rateLimitProperties = rateLimitProperties;
+        this.limit =
                 BucketConfiguration.builder()
                         .addLimit(limit ->
                                 limit.capacity(rateLimitProperties.getCapacity()).refillGreedy(rateLimitProperties.getRefillTokens(), rateLimitProperties.getRefillDuration()))
                         .build();
     }
+
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {

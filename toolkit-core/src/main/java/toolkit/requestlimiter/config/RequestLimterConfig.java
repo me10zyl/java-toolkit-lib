@@ -1,0 +1,53 @@
+package toolkit.requestlimiter.config;
+
+import io.github.bucket4j.distributed.proxy.ProxyManager;
+import io.github.bucket4j.distributed.serialization.Mapper;
+import io.github.bucket4j.redis.redisson.cas.RedissonBasedProxyManager;
+import org.redisson.Redisson;
+import org.redisson.api.RedissonClient;
+import org.redisson.config.Config;
+import org.redisson.config.SingleServerConfig;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.dao.InvalidDataAccessApiUsageException;
+import org.springframework.data.redis.connection.RedisClusterConnection;
+import org.springframework.data.redis.connection.RedisClusterNode;
+import org.springframework.data.redis.connection.RedisConnectionFactory;
+import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
+
+public class RequestLimterConfig {
+
+    @ConditionalOnMissingBean(ProxyManager.class)
+    @Bean
+    public ProxyManager<byte[]> proxyManager(RedissonClient redissonClient) {
+        return RedissonBasedProxyManager.builderFor(((Redisson) redissonClient).getCommandExecutor())
+                .withKeyMapper(Mapper.BYTES).build();
+    }
+
+    // 1. 配置 Redisson 客户端
+    @ConditionalOnMissingBean(RedissonClient.class)
+    @Bean
+    public RedissonClient getRedissonClient(RedisConnectionFactory redisConnectionFactory) {
+        Config config = new Config();
+        try {
+            RedisClusterConnection clusterConnection = redisConnectionFactory.getClusterConnection();
+            boolean isCluster = false;
+            if(clusterConnection != null) {
+                for (RedisClusterNode clusterGetNode : clusterConnection.clusterGetNodes()) {
+                    config.useClusterServers().addNodeAddress("redis://" + clusterGetNode.toString());
+                }
+            }
+        }catch (InvalidDataAccessApiUsageException exception){
+            LettuceConnectionFactory factory = (LettuceConnectionFactory) redisConnectionFactory;
+            String redisURI =  //factory.getHostName()
+                    "redis://" + factory.getHostName() + ":" + factory.getPort();
+            //ReflectUtil.getFieldValue((ReflectUtil.getFieldValue((LettuceConnectionFactory) redisConnectionFactory, "client")), "redisURI").toString();
+            SingleServerConfig singleServerConfig = config.useSingleServer();
+            singleServerConfig.setAddress(redisURI);
+            singleServerConfig.setDatabase(factory.getDatabase());
+            singleServerConfig.setPassword(factory.getPassword());
+        }
+        return Redisson.create(config);
+    }
+}
