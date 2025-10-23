@@ -27,4 +27,25 @@
         </repository>
     </distributionManagement>
 
+    <build>
+        <plugins>
+            <!-- 生成源码包并部署 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.2.1</version> <!-- 推荐使用最新稳定版 -->
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <!-- 绑定到 deploy 之前的阶段（如 package 或 install） -->
+                        <phase>package</phase>
+                        <goals>
+                            <!-- 生成源码包并附加到构建产物中 -->
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>
