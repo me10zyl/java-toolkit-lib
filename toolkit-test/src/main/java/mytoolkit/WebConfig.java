@@ -1,20 +1,22 @@
 package mytoolkit;
 
 import io.github.bucket4j.distributed.proxy.ProxyManager;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import toolkit.requestlimiter.RequestLimiterInterceptor;
+import toolkit.requestlimiter.anno.EnableRequestLimiter;
 import toolkit.requestlimiter.properties.RateLimitProperties;
 
 @Configuration
+@EnableRequestLimiter
+@RequiredArgsConstructor
 public class WebConfig implements WebMvcConfigurer {
 
-    @Autowired
-    private ProxyManager<byte[]> proxyManager;
-    @Autowired
-    private RateLimitProperties rateLimitProperties;
+
+    private final ProxyManager<byte[]> proxyManager;
+    private final RateLimitProperties rateLimitProperties;
 
 
     @Override

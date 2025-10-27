@@ -1,0 +1,2 @@
+org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+toolkit.requestlimiter.config.RequestLimiterConfig
