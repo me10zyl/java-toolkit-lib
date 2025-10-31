@@ -22,7 +22,7 @@ import toolkit.requestlimiter.properties.RateLimitProperties;
 
 @Slf4j
 @Configuration
-@ConditionalOnProperty(prefix = "rate-limit", name = "enabled", havingValue = "true", matchIfMissing = true)
+@ConditionalOnProperty(prefix = "rate-limit", name = "enabled", havingValue = "true", matchIfMissing = false)
 public class RequestLimiterConfig {
 
     @Bean
