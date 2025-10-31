@@ -64,8 +64,10 @@ public class HttpBodyEncFilter implements Filter {
         String[] swaggerPaths = {
                 contextPath + "/swagger-resources",
                 contextPath + "/v2/api-docs/**",
-                contextPath + "/api/doc.html",
-                contextPath + "/doc.html"
+                contextPath + "/doc.html",
+                contextPath + "/api/swagger-resources",
+                contextPath + "/api/v2/api-docs/**",
+                contextPath + "/api/doc.html"
         };
         String[] combined = new String[excludePatterns.length + swaggerPaths.length];
         System.arraycopy(excludePatterns, 0, combined, 0, excludePatterns.length);

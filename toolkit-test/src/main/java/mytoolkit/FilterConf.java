@@ -6,9 +6,9 @@ import org.springframework.boot.web.servlet.ServletRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
+import toolkit.enc.advice.EncryptResponseBodyAdvice;
 import toolkit.enc.filter.HttpBodyEncFilter;
 import toolkit.enc.properties.EncProperties;
-import toolkit.enc.advice.EncryptResponseBodyAdvice;
 
 @Configuration
 public class FilterConf {
