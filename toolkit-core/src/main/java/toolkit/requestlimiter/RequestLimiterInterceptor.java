@@ -1,6 +1,8 @@
 package toolkit.requestlimiter;
 
 
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.BandwidthBuilder;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.BucketConfiguration;
 import io.github.bucket4j.distributed.proxy.ProxyManager;
@@ -33,15 +35,16 @@ import javax.servlet.http.HttpServletResponse;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.concurrent.ConcurrentHashMap;
 
 
 public class RequestLimiterInterceptor implements HandlerInterceptor {
 
-    private final ProxyManager<byte[]> proxyManager;
+    private final ProxyManager<String> proxyManager;
     private final RateLimitProperties rateLimitProperties;
     private final BucketConfiguration limit;
 
-    public RequestLimiterInterceptor(ProxyManager<byte[]> proxyManager, RateLimitProperties rateLimitProperties) {
+    public RequestLimiterInterceptor(ProxyManager<String> proxyManager, RateLimitProperties rateLimitProperties) {
         this.proxyManager = proxyManager;
         this.rateLimitProperties = rateLimitProperties;
         this.limit =
@@ -63,32 +66,42 @@ public class RequestLimiterInterceptor implements HandlerInterceptor {
         RateLimit annotation = method.getAnnotation(RateLimit.class);
         if (annotation != null) {
             // 方法上未添加 @RateLimit 注解，直接通过
-            if(!annotation.enabled()){
+            if (!annotation.enabled()) {
                 return true;
             }
         }
 
         // 获取唯一的客户端标识，例如 IP 地址
-        String key = IpUtil.getClientIpAddress(request);
+        String key = "bucket:ratelimiter:" + IpUtil.getClientIpAddress(request) + ":" + request.getRequestURI();
 
         // 从代理管理器中获取或创建一个令牌桶
         Bucket bucket = null;
-        if(annotation == null){
-            bucket = proxyManager.builder().build(key.getBytes(StandardCharsets.UTF_8), () -> {
+        if (annotation == null) {
+            bucket =  proxyManager.builder().build(key, () -> {
                 return limit;
             });
-        }
-        else {
-            // 方法上添加了 @RateLimit 注解，检查是否需要限流
-            if(annotation.capacity() > 0 && annotation.refillTokens() > 0 && annotation.refillDuration() > 0) {
-                // 从代理管理器中获取或创建一个令牌桶
-                 bucket = proxyManager.builder().build(key.getBytes(StandardCharsets.UTF_8), () -> {
-                    return BucketConfiguration.builder()
-                            .addLimit(limit ->
-                                    limit.capacity(annotation.capacity()).refillGreedy(annotation.refillTokens(), Duration.of(annotation.refillDuration(), TimeUnitConverter.toTemporalUnit(annotation.refillDurationUnit()))))
-                            .build();
-                });
+        } else {
+            long capacity = rateLimitProperties.getCapacity();
+            int refillTokens = rateLimitProperties.getRefillTokens();
+            Duration refillDuration = rateLimitProperties.getRefillDuration();
+            if (annotation.capacity() > 0) {
+                capacity = annotation.capacity();
             }
+            if (annotation.refillTokens() > 0) {
+                refillTokens = annotation.refillTokens();
+            }
+            if (annotation.refillDuration() > 0) {
+                refillDuration = Duration.of(annotation.refillDuration(), TimeUnitConverter.toTemporalUnit(annotation.refillDurationUnit()));
+            }
+            // 从代理管理器中获取或创建一个令牌桶
+            Bandwidth bd = BandwidthBuilder.builder().capacity(capacity)
+                    .refillGreedy(refillTokens, refillDuration).build();
+
+            bucket = proxyManager.builder().build(key, () -> {
+                return BucketConfiguration.builder()
+                        .addLimit(bd)
+                        .build();
+            });
         }
 
         // 尝试消费一个令牌

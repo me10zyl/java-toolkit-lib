@@ -15,7 +15,7 @@ import toolkit.requestlimiter.properties.RateLimitProperties;
 public class WebConfig implements WebMvcConfigurer {
 
 
-    private final ProxyManager<byte[]> proxyManager;
+    private final ProxyManager<String> proxyManager;
     private final RateLimitProperties rateLimitProperties;
 
 

@@ -21,12 +21,14 @@ import toolkit.enc.dto.PublicKey;
 import toolkit.enc.encrypts.EncryptAlogritm;
 import toolkit.enc.encrypts.EncFactory;
 import toolkit.enc.properties.EncProperties;
+import toolkit.requestlimiter.anno.RateLimit;
 
 import javax.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 
 @RestController
@@ -47,6 +49,7 @@ public class TestController {
     }
 
     @GetMapping("/testLimit")
+    @RateLimit(capacity = 10, refillTokens = 5, refillDuration = 5, refillDurationUnit = TimeUnit.SECONDS)
     public String testLimt(){
         return "hello, testLimit";
     }

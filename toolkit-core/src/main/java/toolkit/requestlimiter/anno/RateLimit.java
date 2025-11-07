@@ -21,15 +21,15 @@ public @interface RateLimit {
     /**
      * 限流总量
      */
-    int capacity() default 0;
+    int capacity() default -1;
     /**
      * 每次补充的令牌数量
      */
-    int refillTokens() default 0;
+    int refillTokens() default -1;
      /**
       * 补充令牌的时间间隔
       */
-    long refillDuration() default 0;
+    long refillDuration() default -1;
      /**
       * 补充令牌的时间单位
       */
