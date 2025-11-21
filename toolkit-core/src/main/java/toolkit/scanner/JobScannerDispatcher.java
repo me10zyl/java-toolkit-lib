@@ -6,7 +6,6 @@ import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.context.request.NativeWebRequest;
 import toolkit.scanner.dao.JobScannerMapper;
 import toolkit.scanner.entity.JobScannerDO;
 import toolkit.traceid.Constants;
@@ -15,11 +14,29 @@ import toolkit.utils.ContextHolder;
 import toolkit.utils.IpUtil;
 import toolkit.utils.StackTraceUtil;
 
-import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.*;
+
+//DDL:-- auto-generated definition
+//create table job_scanner
+//(
+//    job_id                bigint auto_increment
+//        primary key,
+//    job_name              varchar(50)                        not null comment 'job名称',
+//    execute_interval      int      default ((60 * 5))        not null comment '执行间隔（秒）',
+//    next_execute_time     datetime                           null comment '下次执行时间',
+//    last_execute_time     datetime                           null comment 'job最后执行时间',
+//    last_execute_result   text                               null comment '最后执行结果',
+//    last_execute_trace_id varchar(32)                        null comment '最够执行的traceid',
+//    last_execute_ip       varchar(20)                        null comment '最后执行的ip',
+//    max_times             int      default 5                 not null comment '最大执行次数',
+//    job_desc              varchar(100)                       null comment 'job描述',
+//    created_at            datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+//    update_time           datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间'
+//);
+
 
 @Component
 @Slf4j
