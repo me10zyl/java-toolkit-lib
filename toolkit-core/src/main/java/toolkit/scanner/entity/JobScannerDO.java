@@ -77,4 +77,6 @@ public class JobScannerDO {
       * last_execute_ip: varchar(20) null comment '执行ip'
       */
     private String lastExecuteIp;
+
+    private Integer status;
 }
