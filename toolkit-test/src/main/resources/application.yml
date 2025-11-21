@@ -32,6 +32,34 @@ spring:
         # 连接超时时间（毫秒）
         timeout: 3000
 
+  datasource:
+    datasource:
+      url: jdbc:mysql://${cook_mysql_hostname}:${cook_mysql_port}/delta_force?autoReconnect=true&useUnicode=true&character_set_server=utf8mb4&zeroDateTimeBehavior=convertToNull&transformedBitIsBoolean=true&useSSL=false&connectTimeout=15000&socketTimeout=60000&serverTimezone=Asia/Shanghai
+      username: ${cook_mysql_username}
+      password: ${cook_mysql_password}
+      driver-class-name: com.mysql.cj.jdbc.Driver
+
+
+mybatis-plus:
+  mapper-locations: classpath*:mapper/*Mapper.xml
+  typeAliasesPackage: mytoolkit.entity
+  typeEnumsPackage: mytoolkit.enums
+  global-config:
+    db-config:
+      idType: AUTO
+      insert-strategy: not_null
+      update-strategy: not_null
+      #逻辑删除配置（下面3个配置）
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: true #配置的缓存的全局开关
+    lazyLoadingEnabled: true #延时加载的开关
+    multipleResultSetsEnabled: true #开启的话，延时加载一个属性时会加载该对象全部属性，否则按需加载属性
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+
 knife4j:
   enable: true
 rate-limit:
